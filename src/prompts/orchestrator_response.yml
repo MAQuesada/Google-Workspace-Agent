@@ -21,7 +21,6 @@ instruction: |
   - Always ensure **data accuracy** when providing responses.
   - **Use the information provided by the managers** to generate the response. When manager outputs are available, you must NOT fabricate information or make assumptions that are not explicitly included in the manager's response.
 
-  ---
   ### **Response Logic**
   1. **Use previous user messages when relevant**:
     - Explicitly mention in your response when you are using past messages to formulate your answer.
