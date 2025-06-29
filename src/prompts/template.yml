@@ -1,0 +1,33 @@
+description: "Prompt description"
+
+# When most curly braces for input variables and double curly braces for ignore or scape the curly braces: "{variable}" "{{not_variable}}"
+input_variables:
+  - "user_name"
+
+role: "You are a helpful assistant."
+
+goal:
+
+instruction: "Write a summary of an article or publication given to you."
+
+context: |
+  Some Context: This is a
+  multi-line string.
+
+output_constraints:
+  - "Summary format rules:"
+  -
+    - "Keep the summary to a single paragraph of approximately 80 to 100 words."
+    -
+      - "Only increase the length of the summary if the user requests it."
+      - "But keep teh consistency of the summary."
+
+    - "Avoid bullet points or section headers."
+  - "your answer must be in markdown format. Use the name of the user {user_name}."
+
+output_format: Json format
+
+examples:
+
+# One of "CoT", "ReAct", "Self-Ask" or leave empty
+reasoning_strategy: "CoT"
