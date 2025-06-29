@@ -88,9 +88,9 @@ class PromptBuilder:
             if lead_in:
                 return (
                     f"{space}{self._uppercase_first_char(lead_in)}\n{space}"
-                    f"- {self._uppercase_first_char(formatted_value)}"
+                    f"{self._uppercase_first_char(formatted_value)}"
                 )
-            return f"{space}- {self._uppercase_first_char(formatted_value)}"
+            return f"{space}{self._uppercase_first_char(formatted_value)}"
         else:
             output = ""
             if lead_in:
