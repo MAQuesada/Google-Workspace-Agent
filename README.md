@@ -1,4 +1,4 @@
-🧠🤖 Google Workspace Agent
+# 🧠🤖 Google Workspace Agent
 
 Description....
 
@@ -35,7 +35,7 @@ OPENAI_API_KEY=your-key-here
 
 ---
 
-## ▶️ Run the RAG Pipeline
+## ▶️ Run the Orchestrator
 
 Run the `test_end_to_end.ipynb` notebook. It will include:
 
