@@ -170,3 +170,108 @@ This command sets up the pre-commit hooks that automatically format your code ac
 ```python
 pre-commit run --all
 ```
+
+---
+
+## 🔐 Setting Up Google Cloud OAuth App
+
+To allow your application to access a user's Google account (Calendar, Contacts, Gmail, etc.), follow these steps:
+
+### 1. Create a Google Cloud Project
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/).
+2. Create a new project or select an existing one.
+
+### 2. Configure the OAuth Consent Screen
+
+1. In the left sidebar, go to **APIs & Services > OAuth consent screen**.
+2. Choose **User Type: External**.
+3. Fill in:
+
+   - **App name** (e.g. `Google Workspace Agent`)
+   - **User support email**
+   - **Developer contact info**
+4. Save and continue.
+5. Add yourself (and any testers) under **Test Users** if your app is in **testing mode** (required unless app is published).
+6. Submit and finish.
+
+### 3. Create OAuth Credentials
+
+1. Go to **APIs & Services > Credentials**.
+2. Click **Create Credentials > OAuth Client ID**.
+3. Choose **Application type: Desktop app**.
+4. Name it (e.g. `Local Agent Auth`).
+5. Click **Create**.
+6. Copy your:
+
+   - **Client ID**
+   - **Client Secret**
+   - Download the `.json` config file
+
+### 4. Enable Required Google APIs
+
+Go to **APIs & Services > Library** and enable the following:
+
+- ✅ **Google Calendar API**
+- ✅ **Google People API**
+- ✅ **Gmail API**
+- ✅ **OAuth2 API**
+
+### 5. Add Environment Variables
+
+In your `.env` file, define:
+
+```env
+GOOGLE_PROJECT_CREDENTIALS_PATH=your_project_credentials_path_here
+GOOGLE_CLIENT_ID=your_client_id_here
+GOOGLE_CLIENT_SECRET=your_client_secret_here
+GOOGLE_TOKEN_URL=https://oauth2.googleapis.com/token
+```
+
+---
+
+## 👤 Linking a Google Account to a User
+
+After you’ve set up the OAuth credentials, follow these steps to associate a Google account with a local user in your system:
+
+### 1. Run the Consent Flow Script
+
+```bash
+python src/google_service/consent_flow.py
+```
+
+This script will:
+
+- Open a browser window where the user logs in to their Google account.
+- Ask the user to authorize the application.
+- Request an authorization code.
+- Exchange the code for a `refresh_token` and use it to:
+
+  - Fetch the user's Google email address
+  - Store the account under a local username
+
+### 2. Follow the Prompts
+
+You will be asked to:
+
+- Paste the **authorization code** from the browser.
+- Provide a **username** to associate the Google account with.
+- Provide a **account_info** to associate the Google account with(this information will be used to identify the account).
+
+Once completed, the Google account will be saved and linked to the local user.
+
+### 3. View Associated Accounts
+
+You can use the following code snippet to list accounts for a user:
+
+```python
+from google_service.core import UserService
+
+service = UserService()
+accounts = service.list_accounts("your_username")
+
+for acc in accounts:
+    print(f"Email: {acc.account_email} - Expires: {acc.credentials.expiry}")
+```
+
+---
