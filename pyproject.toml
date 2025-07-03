@@ -8,10 +8,10 @@ readme = "README.md"
 
 
 packages = [
-    {include = "prompts", from = "src"},
-    {include = "agents", from = "src"},
-    {include = "google_service", from = "src"},
-    {include = "utils", from = "src"},
+    { include = "prompts", from = "src" },
+    { include = "agents", from = "src" },
+    { include = "google_service", from = "src" },
+    { include = "utils", from = "src" },
 ]
 
 [tool.poetry.dependencies]
@@ -24,7 +24,7 @@ python-dotenv = "^1.1.0"
 langgraph = "^0.4.8"
 psycopg-pool = "^3.2.6"
 langgraph-checkpoint-postgres = "^2.0.21"
-psycopg = {extras = ["binary"], version = "^3.2.9"}
+psycopg = { extras = ["binary"], version = "^3.2.9" }
 langchain-community = "^0.3.25"
 openai = "^1.85.0"
 langchain-experimental = "^0.3.4"
@@ -32,6 +32,8 @@ google-auth = "^2.40.3"
 google-api-python-client = "^2.174.0"
 google-auth-httplib2 = "^0.2.0"
 google-auth-oauthlib = "^1.2.2"
+pytz = "^2025.2"
+types-pytz = "^2025.2.0.20250516"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
@@ -43,3 +45,8 @@ black = "^25.1.0"
 notebook = "^7.4.3"
 ipykernel = "^6.29.5"
 jupyter = "^1.1.1"
+
+
+[[tool.mypy.overrides]]
+module = ["qdrant_client.*", "pytz.*"]
+ignore_missing_imports = true

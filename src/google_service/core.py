@@ -115,3 +115,7 @@ class UserService:
             self.save_user(user)
 
         return account.credentials
+
+
+def get_user_service():
+    return UserService()

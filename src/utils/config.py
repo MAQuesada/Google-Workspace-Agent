@@ -3,6 +3,9 @@ from typing import List
 
 from pydantic_settings import BaseSettings
 
+import pytz
+from pytz import BaseTzInfo
+
 
 class Config(BaseSettings):
     OPENAI_API_KEY: str = ""
@@ -17,6 +20,7 @@ class Config(BaseSettings):
         "checkpoint_lgraph?sslmode=disable"
     )
     DB_PATH: str = "data.sb"
+    TIMEZONE: BaseTzInfo = pytz.timezone("Europe/Paris")
 
     GOOGLE_PROJECT_CREDENTIALS_PATH: str = "google_credentials.json"
     GOOGLE_CLIENT_ID: str = ""

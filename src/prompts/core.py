@@ -244,3 +244,8 @@ class PromptBuilder:
                 "Input variables in the template do not match the expected input variables"
             )
         return prompt_template
+
+
+def get_prompt_builder(config_path: str = "config.yaml") -> PromptBuilder:
+    """Returns instance of the PromptBuilder class."""
+    return PromptBuilder(config_path)
