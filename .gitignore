@@ -1,6 +1,9 @@
 # OSX
 #
 .DS_Store
+.env
+*.db
+google_credentials.json
 
 # Xcode
 #
