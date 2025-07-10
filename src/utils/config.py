@@ -9,6 +9,8 @@ from pytz import BaseTzInfo
 
 class Config(BaseSettings):
     OPENAI_API_KEY: str = ""
+    MAIN_MODEL: str = "gpt-4o-mini"
+    MINI_MODEL: str = "gpt-4o-mini"
 
     LANGSMITH_TRACING: bool = True
     LANGSMITH_ENDPOINT: str = "https://api.smith.langchain.com"

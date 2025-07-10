@@ -46,7 +46,7 @@ def tools_condition_worker(
 def create_calendar_graph(
     tools: list,
     calendar_worker_template: str = CALENDAR_WORKER_TEMPLATE,
-    llm=ChatOpenAI(model="gpt-4o-mini", temperature=0.0),
+    llm=ChatOpenAI(model=get_config().MAIN_MODEL, temperature=0.0),
 ):
     """
     Creates a calendar graph with customizable parameters.
@@ -54,7 +54,7 @@ def create_calendar_graph(
     Args:
         tools (list): The tools to use in the calendar graph.
         calendar_worker_template (str): The template for the calendar worker. Defaults to CALENDAR_WORKER_TEMPLATE.
-        llm : The language model to use. Defaults to ChatOpenAI(model="gpt-4o-mini", temperature=0.0).
+        llm : The language model to use.
 
     Returns:
         StateGraph: A compiled state graph for calendar operations.
