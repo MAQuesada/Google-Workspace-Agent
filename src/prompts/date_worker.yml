@@ -1,8 +1,9 @@
 description: "Prompt for the Date Worker to manage date-related operations and provide necessary information."
 
 input_variables:
-  - "calendar_info"
+  - "timezone"
   - "current_date"
+  # - "user_input"
 
 role: "You are an expert assistant specialized in recognizing and extracting temporal expressions from natural language input."
 
