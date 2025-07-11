@@ -12,10 +12,11 @@ from agents.utils import limit_calls
 from langchain_core.tools.base import InjectedToolCallId
 
 from google_service.core import get_user_service
+from utils.config import get_config
 
 CONTACT_FIELDS = "names,emailAddresses,phoneNumbers"
 PAGE_ZISE = 1000  # 1000 is the maximum page size for the Google People API
-MAX_COONTACTS_TO_SHOW = 20
+MAX_NUM_DISPLAY_ITEMS = get_config().MAX_NUM_DISPLAY_ITEMS
 contacts_toolset = []
 
 
@@ -495,10 +496,10 @@ def get_contacts(
     except Exception as e:
         return {"detail": f"Error fetching the contacts: {str(e)}", "contacts": []}
 
-    if len(contacts) > MAX_COONTACTS_TO_SHOW:
+    if len(contacts) > MAX_NUM_DISPLAY_ITEMS:
         return {
-            "detail": f"There are  {len(contacts)} contacts found matching '{query}'. Showing the first {MAX_COONTACTS_TO_SHOW}. Please be more specific.",
-            "contacts": contacts[:MAX_COONTACTS_TO_SHOW],
+            "detail": f"There are  {len(contacts)} contacts found matching '{query}'. Showing the first {MAX_NUM_DISPLAY_ITEMS}. Please be more specific.",
+            "contacts": contacts[:MAX_NUM_DISPLAY_ITEMS],
         }
     if not contacts:
         return {

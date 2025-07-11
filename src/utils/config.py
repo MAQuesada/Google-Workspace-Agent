@@ -23,6 +23,7 @@ class Config(BaseSettings):
     )
     DB_PATH: str = "data.sb"
     TIMEZONE: BaseTzInfo = pytz.timezone("Europe/Paris")
+    MAX_NUM_DISPLAY_ITEMS: int = 10
 
     GOOGLE_PROJECT_CREDENTIALS_PATH: str = "google_credentials.json"
     GOOGLE_CLIENT_ID: str = ""
