@@ -9,6 +9,8 @@ from pytz import BaseTzInfo
 
 class Config(BaseSettings):
     OPENAI_API_KEY: str = ""
+    MAIN_MODEL: str = "gpt-4o-mini"
+    MINI_MODEL: str = "gpt-4o-mini"
 
     LANGSMITH_TRACING: bool = True
     LANGSMITH_ENDPOINT: str = "https://api.smith.langchain.com"
@@ -21,6 +23,7 @@ class Config(BaseSettings):
     )
     DB_PATH: str = "data.sb"
     TIMEZONE: BaseTzInfo = pytz.timezone("Europe/Paris")
+    MAX_NUM_DISPLAY_ITEMS: int = 10
 
     GOOGLE_PROJECT_CREDENTIALS_PATH: str = "google_credentials.json"
     GOOGLE_CLIENT_ID: str = ""
