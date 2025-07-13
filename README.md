@@ -1,52 +1,81 @@
-# 🧠🤖 Google Workspace Agent
+# 🤖 Google Workspace Agent
 
-Description....
+A **LangGraph-powered agent** designed to manage and interact with Google Workspace services through natural language. This project orchestrates multiple specialized managers (date, calendar, contacts, email) that route requests to the appropriate Google account APIs based on user needs.
 
-## 🛠️ Setup Instructions
+---
 
-### 1. Clone the Repository
+## 🧠 Architecture Overview
 
-```bash
-git clone https://github.com/manuelalejandroquesada/google_workspace_agent
-cd google_workspace_agent
-```
-
-### 2. Install Dependencies with Poetry
-
-```bash
-curl -sSL https://install.python-poetry.org | python3 -
-poetry install
-poetry shell
-```
-
-### 3. Set Up Environment Variables
-
-Create a `.env` file using the sample provided:
-
-```bash
-cp example.env .env
-```
-
-Then update your `.env` with your OpenAI API key:
-
-```
-OPENAI_API_KEY=your-key-here
+```ascii
+User Request → Orchestrator → Specialized Managers → Google Workspace APIs
+                    ↑               ↓
+                    └───── Feedback Synthesizer ─────┘
 ```
 
 ---
 
-## ▶️ Run the Orchestrator
+## ⚙️ Tech Stack
 
-Run the `test_end_to_end.ipynb` notebook. It will include:
-
-- Clone the official LangGraph documentation repository.
-- Load and split the documentation into optimized chunks.
-- Generate embeddings using OpenAI’s text-embedding-3-large model.
-- Store the embedded chunks into Qdrant for later retrieval.
-- Build the RAG-pipeline instance.
-- Create an interactive cell for chat.
+| Component           | Tool / Service              | Purpose                              |
+|---------------------|-----------------------------|--------------------------------------|
+| **LLM**             | OpenAI                      | Natural language understanding       |
+| **Agent Framework** | LangGraph                   | Agent orchestration & state management |
+| **Model tracking**  | LangSmith                   | Model tracking & debugging           |
+| **Database**        | PostgreSQL/SQLite           | Checkpointing & persistence          |
+| **API Integration** | Google API Client           | Google Workspace service access      |
+| **Authentication**  | Google Auth                 | OAuth & credential management        |
+| **Environment**     | Poetry                      | Dependency & virtual env setup       |
 
 ---
+
+## 🚀 Features
+
+- 📅 **Calendar Management**: Create, update, and query calendar events
+- 📧 **Email Operations**: Send, read, and organize emails
+- 👥 **Contact Management**: Add, update, and search contacts
+- 🗓️ **Date Intelligence**: Smart date handling and scheduling
+- 🔄 **Multi-account Support**: Route operations to the correct Google account
+- 🧠 **Orchestration**: Central planning and task delegation
+- 📝 **Verification**: Check if there is sufficient context and valid data to proceed with calling the next manager in a multi-step process.
+- 💬 **Conversational Interface**: Natural language interaction
+
+---
+
+## 🏗️ System Architecture
+
+The system follows a hierarchical structure:
+
+1. **Orchestrator**: Plans and delegates tasks based on user requests
+2. **Specialized Managers**:
+   - **Date Manager**: Handles date-related operations and scheduling
+   - **Calendar Manager**: Manages calendar events and availability
+   - **Email Manager**: Processes email-related tasks
+   - **Contacts Manager**: Manages contact information
+3. **Google API Integration**: Each manager routes requests to the appropriate Google account
+
+---
+
+## 📂 Project Structure
+
+```plaintext
+.
+├── README.md                    # You're reading it :)
+├── pyproject.toml               # Poetry project configuration
+└── src/                         # Source code
+    ├── agents/                  # Agent implementation
+    │   ├── orchestrator/        # Central orchestrator
+    │   ├── emails/              # Email manager
+    │   ├── calendar/            # Calendar manager
+    │   ├── contacts/            # Contacts manager
+    │   └── date/                # Date manager
+    ├── google_service/          # Google API integration
+    ├── prompts/                 # System prompts for agents
+    └── utils/                   # Utility functions and helpers
+```
+
+---
+
+
 
 ## 🛠  For development
 
@@ -273,5 +302,12 @@ accounts = service.list_accounts("your_username")
 for acc in accounts:
     print(f"Email: {acc.account_email} - Expires: {acc.credentials.expiry}")
 ```
+
+---
+
+## ▶️ Run the Orchestrator
+Once you have completed the previous steps, you can run the orchestrator.
+
+Run the `test_end_to_end.ipynb` notebook. It will include create an interactive cell for chat.
 
 ---
