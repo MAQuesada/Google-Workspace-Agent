@@ -10,7 +10,7 @@ DB_PATH = os.getenv("DB_PATH", "./storage.db")
 
 class KeyValueStore:
     def __init__(self, db_path=DB_PATH):
-        self.conn = sqlite3.connect(db_path)
+        self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self._init_db()
 
     def _init_db(self):
