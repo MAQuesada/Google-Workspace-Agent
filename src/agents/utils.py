@@ -1,5 +1,5 @@
 from typing import Any, Dict, Optional
-from langgraph.checkpoint.postgres import PostgresSaver
+from langgraph.checkpoint import CheckpointSaver
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import (
     ChannelVersions,

@@ -73,7 +73,8 @@ def create_calendar_graph(
         response = await llm_with_tools.ainvoke(state["workers_messages"])
         return {"workers_messages": [response]}
 
-    worker_builder.add_node("llm_with_calendar_tools", custom_llm_with_calendar_tools)
+    worker_builder.add_node("llm_with_calendar_tools",
+                            custom_llm_with_calendar_tools)
     tool_node = ToolNode(tools=tools, messages_key="workers_messages")
     worker_builder.add_node("calendar_tools", tool_node)
     worker_builder.add_conditional_edges(
