@@ -6,11 +6,11 @@ from google.auth.transport.requests import Request
 from pydantic import ValidationError
 import requests
 
-from google_service.storage import KeyValueStore
-from google_service.models import User, GoogleAccount, GoogleAccountCredentials
+from src.google_service.storage import KeyValueStore
+from src.google_service.models import User, GoogleAccount, GoogleAccountCredentials
 
-from utils.config import get_config
-from utils.exceptions import UserError
+from src.utils.config import get_config
+from src.utils.exceptions import UserError
 
 config = get_config()
 

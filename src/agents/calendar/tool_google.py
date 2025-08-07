@@ -8,15 +8,15 @@ import uuid
 from langgraph.prebuilt import InjectedState
 from langchain_core.tools import StructuredTool
 from googleapiclient.discovery import build
-from agents.calendar.schemas import (
+from src.agents.calendar.schemas import (
     FindEventSchema,
     FreeSlotsSchema,
     DeleteEventSchema,
     UpdateEventSchema,
     CreateEventSchema,
 )
-from google_service.core import get_user_service
-from agents.utils import limit_calls
+from src.google_service.core import get_user_service
+from src.agents.utils import limit_calls
 
 calendar_toolset_google = []
 

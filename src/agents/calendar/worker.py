@@ -13,9 +13,9 @@ from langgraph.prebuilt import ToolNode, tools_condition
 from pydantic import BaseModel
 from typing_extensions import TypedDict
 
-from prompts.core import get_prompt_builder
-from utils.config import get_config
-from agents.calendar.tool_google import calendar_toolset_google
+from src.prompts.core import get_prompt_builder
+from src.utils.config import get_config
+from src.agents.calendar.tool_google import calendar_toolset_google
 
 _ = load_dotenv(find_dotenv())
 
