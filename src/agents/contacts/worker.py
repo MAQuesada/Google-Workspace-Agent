@@ -1,14 +1,11 @@
-from typing import Any, Literal
-
 from dotenv import find_dotenv, load_dotenv
-from langchain_core.messages import AnyMessage, SystemMessage
+from langchain_core.messages import SystemMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
-from langgraph.prebuilt import ToolNode, tools_condition
-from pydantic import BaseModel
+from langgraph.prebuilt import ToolNode
 
 from agents.contacts.tools_google import contacts_toolset as contacts_toolset_google
-from agents.setup import WorkersState
+from agents.setup import WorkersState, tools_condition_worker
 from prompts.core import get_prompt_builder
 from utils.config import get_config
 
@@ -17,16 +14,6 @@ _ = load_dotenv(find_dotenv())
 CONTACTS_WORKER_TEMPLATE = get_prompt_builder("src/prompts/config.yaml").build_prompt(
     "src/prompts/contacts_worker.yml"
 )[0]
-
-
-def tools_condition_worker(
-    state: list[AnyMessage] | dict[str, Any] | BaseModel,
-    messages_key: str = "workers_messages",
-) -> Literal["tools", "__end__"]:
-    """Wrapper to use a message_key different from `message`
-    in the pre-built `tools_condition` function.
-    """
-    return tools_condition(state, messages_key)
 
 
 def create_contacts_graph(

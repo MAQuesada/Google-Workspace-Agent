@@ -1,16 +1,13 @@
 from datetime import datetime
-from typing import Any, Literal
 
 from dotenv import find_dotenv, load_dotenv
-from langchain_core.messages import AnyMessage
 from langchain_core.messages import SystemMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph
 from langgraph.graph import END, START
-from langgraph.prebuilt import ToolNode, tools_condition
-from pydantic import BaseModel
+from langgraph.prebuilt import ToolNode
 
-from agents.setup import WorkersState
+from agents.setup import WorkersState, tools_condition_worker
 from prompts.core import get_prompt_builder
 from utils.config import get_config
 from agents.calendar.tool_google import calendar_toolset_google
@@ -20,16 +17,6 @@ _ = load_dotenv(find_dotenv())
 CALENDAR_WORKER_TEMPLATE = get_prompt_builder("src/prompts/config.yaml").build_prompt(
     "src/prompts/calendar_worker.yml"
 )[0]
-
-
-def tools_condition_worker(
-    state: list[AnyMessage] | dict[str, Any] | BaseModel,
-    messages_key: str = "workers_messages",
-) -> Literal["tools", "__end__"]:
-    """Wrapper to use a message_key different from `message`
-    in the pre-built `tools_condition` function.
-    """
-    return tools_condition(state, messages_key)
 
 
 def create_calendar_graph(

@@ -11,7 +11,6 @@ class Config(BaseSettings):
     OPENAI_API_KEY: str = ""
     MAIN_MODEL: str = "gpt-4o-2024-08-06"
     MINI_MODEL: str = "gpt-4o-mini"
-
     LANGSMITH_TRACING: bool = True
     LANGSMITH_ENDPOINT: str = "https://api.smith.langchain.com"
     LANGSMITH_API_KEY: str = ""
@@ -37,6 +36,7 @@ class Config(BaseSettings):
         "https://www.googleapis.com/auth/userinfo.email",
         "https://mail.google.com/",
     ]
+    SERP_API_KEY: str = ""
 
     class Config:
         env_file = ".env"
