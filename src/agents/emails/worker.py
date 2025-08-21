@@ -1,14 +1,12 @@
-from typing import Literal, Any
 from datetime import datetime
 
-from langchain_core.messages import SystemMessage, AnyMessage
+from langchain_core.messages import SystemMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, START, END
-from langgraph.prebuilt import ToolNode, tools_condition
-from pydantic import BaseModel
+from langgraph.prebuilt import ToolNode
 from dotenv import load_dotenv, find_dotenv
 
-from agents.setup import WorkersState
+from agents.setup import WorkersState, tools_condition_worker
 from agents.emails.tools import google_emails_toolset
 from utils.config import get_config
 from prompts.core import get_prompt_builder
@@ -18,14 +16,6 @@ _ = load_dotenv(find_dotenv())
 EMAIL_WORKER_TEMPLATE = get_prompt_builder("src/prompts/config.yaml").build_prompt(
     "src/prompts/email_worker.yml"
 )[0]
-
-
-def tools_condition_worker(
-    state: list[AnyMessage] | dict[str, Any] | BaseModel,
-    messages_key: str = "workers_messages",
-) -> Literal["tools", "__end__"]:
-    """Wrapper to use a message_key different from `message` in tools_condition."""
-    return tools_condition(state, messages_key)
 
 
 def create_email_graph(
