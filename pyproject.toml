@@ -35,6 +35,9 @@ google-auth-oauthlib = "^1.2.2"
 pytz = "^2025.2"
 types-pytz = "^2025.2.0.20250516"
 asgiref = "^3.9.1"
+ragas = "^0.3.1"
+pillow = "^11.3.0"
+rapidfuzz = "^3.13.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
