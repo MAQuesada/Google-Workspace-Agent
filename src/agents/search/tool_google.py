@@ -1,5 +1,5 @@
 import re
-from typing import Annotated, List
+from typing import Annotated
 from langchain_core.tools import StructuredTool
 from serpapi import GoogleSearch
 from langgraph.prebuilt import InjectedState
@@ -13,12 +13,12 @@ load_dotenv()
 SERPAPI_API_KEY = os.getenv("SERP_API_KEY")
 
 
-
 # ------------------------
 # Input Schema for Search
 # ------------------------
 class GoogleSearchSchema(BaseModel):
     query: str = Field(..., description="The search query to look up on Google.")
+
 
 # ------------------------
 # Search Tool Logic
@@ -29,38 +29,32 @@ def perform_google_search(
     query: str,
 ) -> dict:
     if not SERPAPI_API_KEY:
-     return {
-        "answer": "SerpAPI key not found. Please set `serp_api_key` in your .env file.",
-        "results": [],
-    }
-    search = GoogleSearch({
-        "q": query,
-        "api_key": SERPAPI_API_KEY,
-        "num": 3,
-    })
+        return {
+            "answer": "SerpAPI key not found. Please set `serp_api_key` in your .env file.",
+            "results": [],
+        }
+    search = GoogleSearch(
+        {
+            "q": query,
+            "api_key": SERPAPI_API_KEY,
+            "num": 3,
+        }
+    )
 
     results = search.get_dict()
     output = []
 
     organic = results.get("organic_results")
     if not organic:
-        return {
-        "answer": f"No search results found for: {query}",
-        "results": []
-    }
+        return {"answer": f"No search results found for: {query}", "results": []}
 
     for result in organic[:3]:
         content = result.get("snippet") or ""
         clean_text = re.sub(r"<.*?>", "", content)
-        output.append({
-            "url": result.get("link", ""),
-            "content": clean_text.strip()
-        })
+        output.append({"url": result.get("link", ""), "content": clean_text.strip()})
 
-    return {
-        "answer": f"Top 3 search results for: {query}",
-        "results": output
-    }
+    return {"answer": f"Top 3 search results for: {query}", "results": output}
+
 
 # ------------------------
 # Define Tool

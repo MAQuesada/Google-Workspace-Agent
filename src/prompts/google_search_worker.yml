@@ -9,7 +9,7 @@ goal: |
   Given a user query, search Google and return the top 3 clean, relevant, and trustworthy results.
 
 instruction: |
-  Use the tool **once** to search Google for the user's query. 
+  Use the tool **once** to search Google for the user's query.
   Do not call any tools after that.
   Your response **must** be in the following JSON format:
   ```json
