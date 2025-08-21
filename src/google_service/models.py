@@ -33,7 +33,9 @@ class GoogleAccountCredentials(BaseModel):
 
     @property
     def expired(self):
-        """Check if the token has expired."""
+        """Check if the token has expired. Treat missing expiry or token as expired."""
+        if not self.expiry or not self.token:
+            return True
         current_datetime = datetime.datetime.now()
         return current_datetime + datetime.timedelta(minutes=5) > self.expiry
 
@@ -59,4 +61,4 @@ class GoogleAccount(BaseModel):
 class User(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
     username: str
-    accounts: List[GoogleAccount] = []
+    accounts: List[GoogleAccount] = Field(default_factory=list)
