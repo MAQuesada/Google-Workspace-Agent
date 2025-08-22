@@ -7,22 +7,21 @@ from langchain_core.tools.base import InjectedToolCallId
 from pydantic import BaseModel, Field
 import os
 from dotenv import load_dotenv
+from src.agents.utils import limit_calls
 
-# Load SerpAPI key from .env
+
 load_dotenv()
 SERPAPI_API_KEY = os.getenv("SERP_API_KEY")
 
 
 
-# ------------------------
-# Input Schema for Search
-# ------------------------
+
 class GoogleSearchSchema(BaseModel):
     query: str = Field(..., description="The search query to look up on Google.")
 
-# ------------------------
-# Search Tool Logic
-# ------------------------
+
+
+@limit_calls(max_calls=10)
 def perform_google_search(
     tool_call_id: Annotated[str, InjectedToolCallId],
     state: Annotated[dict, InjectedState],
@@ -62,9 +61,7 @@ def perform_google_search(
         "results": output
     }
 
-# ------------------------
-# Define Tool
-# ------------------------
+
 google_search_tool = StructuredTool(
     name="google_search_tool",
     description="Uses Google to search for information and returns top 3 results with clean text.",
@@ -72,5 +69,5 @@ google_search_tool = StructuredTool(
     func=perform_google_search,
 )
 
-# Expose as toolset for worker
+
 search_toolset = [google_search_tool]
