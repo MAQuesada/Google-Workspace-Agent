@@ -20,6 +20,33 @@ from google_service.core import UserService
 from google_service.storage import KeyValueStore
 
 
+@pytest.fixture(autouse=True)
+def setup_test_environment():
+    """
+    Automatically set up the test environment for all tests.
+    This ensures that MemorySaver is used instead of PostgresSaverCustom.
+    """
+    # Set environment variables to indicate we're in a test environment
+    os.environ["TESTING"] = "true"
+    os.environ["PYTEST"] = "true"
+    yield
+    # Clean up after test
+    if "TESTING" in os.environ:
+        del os.environ["TESTING"]
+    if "PYTEST" in os.environ:
+        del os.environ["PYTEST"]
+
+
+@pytest.fixture()
+def memory_checkpointer():
+    """
+    Fixture that provides a MemorySaver checkpointer for tests.
+    This avoids any database connections during testing.
+    """
+    from langgraph.checkpoint.memory import MemorySaver
+    return MemorySaver()
+
+
 @pytest.fixture()
 def tmp_db_path():
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
