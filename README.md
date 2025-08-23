@@ -2,7 +2,7 @@
 
 A **LangGraph-powered agent** designed to manage and interact with Google Workspace services through natural language. This project orchestrates multiple specialized managers (date, calendar, contacts, email) that route requests to the appropriate Google account APIs based on user needs.
 
----
+***
 
 ## 🧠 Architecture Overview
 
@@ -12,7 +12,7 @@ User Request → Orchestrator → Specialized Managers → Google Workspace APIs
                     └───── Feedback Synthesizer ─────┘
 ```
 
----
+***
 
 ## ⚙️ Tech Stack
 
@@ -26,20 +26,20 @@ User Request → Orchestrator → Specialized Managers → Google Workspace APIs
 | **Authentication**  | Google Auth                 | OAuth & credential management        |
 | **Environment**     | Poetry                      | Dependency & virtual env setup       |
 
----
+***
 
 ## 🚀 Features
 
-- 📅 **Calendar Management**: Create, update, and query calendar events
-- 📧 **Email Operations**: Send, read, and organize emails
-- 👥 **Contact Management**: Add, update, and search contacts
-- 🗓️ **Date Intelligence**: Smart date handling and scheduling
-- 🔄 **Multi-account Support**: Route operations to the correct Google account
-- 🧠 **Orchestration**: Central planning and task delegation
-- 📝 **Verification**: Check if there is sufficient context and valid data to proceed with calling the next manager in a multi-step process.
-- 💬 **Conversational Interface**: Natural language interaction
+* 📅 **Calendar Management**: Create, update, and query calendar events
+* 📧 **Email Operations**: Send, read, and organize emails
+* 👥 **Contact Management**: Add, update, and search contacts
+* 🗓️ **Date Intelligence**: Smart date handling and scheduling
+* 🔄 **Multi-account Support**: Route operations to the correct Google account
+* 🧠 **Orchestration**: Central planning and task delegation
+* 📝 **Verification**: Check if there is sufficient context and valid data to proceed with calling the next manager in a multi-step process.
+* 💬 **Conversational Interface**: Natural language interaction
 
----
+***
 
 ## 🏗️ System Architecture
 
@@ -47,13 +47,13 @@ The system follows a hierarchical structure:
 
 1. **Orchestrator**: Plans and delegates tasks based on user requests
 2. **Specialized Managers**:
-   - **Date Manager**: Handles date-related operations and scheduling
-   - **Calendar Manager**: Manages calendar events and availability
-   - **Email Manager**: Processes email-related tasks
-   - **Contacts Manager**: Manages contact information
+   * **Date Manager**: Handles date-related operations and scheduling
+   * **Calendar Manager**: Manages calendar events and availability
+   * **Email Manager**: Processes email-related tasks
+   * **Contacts Manager**: Manages contact information
 3. **Google API Integration**: Each manager routes requests to the appropriate Google account
 
----
+***
 
 ## 📂 Project Structure
 
@@ -73,9 +73,7 @@ The system follows a hierarchical structure:
     └── utils/                   # Utility functions and helpers
 ```
 
----
-
-
+***
 
 ## 🛠  For development
 
@@ -178,7 +176,7 @@ This will install all dependencies as specified in `pyproject.toml` and `poetry.
 ### 8. Generating the requirements.txt using Poetry
 
 Make sure the poetry-plugin-export plugin is installed. If not, you can install it with the following command:
- `poetry self add poetry-plugin-export`.
+`poetry self add poetry-plugin-export`.
 
 Then, export your project’s dependencies to a requirements.txt file using:
 
@@ -200,7 +198,7 @@ This command sets up the pre-commit hooks that automatically format your code ac
 pre-commit run --all
 ```
 
----
+***
 
 ## 🔐 Setting Up Google Cloud OAuth App
 
@@ -217,9 +215,9 @@ To allow your application to access a user's Google account (Calendar, Contacts,
 2. Choose **User Type: External**.
 3. Fill in:
 
-   - **App name** (e.g. `Google Workspace Agent`)
-   - **User support email**
-   - **Developer contact info**
+   * **App name** (e.g. `Google Workspace Agent`)
+   * **User support email**
+   * **Developer contact info**
 4. Save and continue.
 5. Add yourself (and any testers) under **Test Users** if your app is in **testing mode** (required unless app is published).
 6. Submit and finish.
@@ -233,18 +231,18 @@ To allow your application to access a user's Google account (Calendar, Contacts,
 5. Click **Create**.
 6. Copy your:
 
-   - **Client ID**
-   - **Client Secret**
-   - Download the `.json` config file
+   * **Client ID**
+   * **Client Secret**
+   * Download the `.json` config file
 
 ### 4. Enable Required Google APIs
 
 Go to **APIs & Services > Library** and enable the following:
 
-- ✅ **Google Calendar API**
-- ✅ **Google People API**
-- ✅ **Gmail API**
-- ✅ **OAuth2 API**
+* ✅ **Google Calendar API**
+* ✅ **Google People API**
+* ✅ **Gmail API**
+* ✅ **OAuth2 API**
 
 ### 5. Add Environment Variables
 
@@ -257,7 +255,7 @@ GOOGLE_CLIENT_SECRET=your_client_secret_here
 GOOGLE_TOKEN_URL=https://oauth2.googleapis.com/token
 ```
 
----
+***
 
 ## 👤 Linking a Google Account to a User
 
@@ -271,21 +269,21 @@ python src/google_service/consent_flow.py
 
 This script will:
 
-- Open a browser window where the user logs in to their Google account.
-- Ask the user to authorize the application.
-- Request an authorization code.
-- Exchange the code for a `refresh_token` and use it to:
+* Open a browser window where the user logs in to their Google account.
+* Ask the user to authorize the application.
+* Request an authorization code.
+* Exchange the code for a `refresh_token` and use it to:
 
-  - Fetch the user's Google email address
-  - Store the account under a local username
+  * Fetch the user's Google email address
+  * Store the account under a local username
 
 ### 2. Follow the Prompts
 
 You will be asked to:
 
-- Paste the **authorization code** from the browser.
-- Provide a **username** to associate the Google account with.
-- Provide a **account_info** to associate the Google account with(this information will be used to identify the account).
+* Paste the **authorization code** from the browser.
+* Provide a **username** to associate the Google account with.
+* Provide a **account\_info** to associate the Google account with(this information will be used to identify the account).
 
 Once completed, the Google account will be saved and linked to the local user.
 
@@ -303,11 +301,54 @@ for acc in accounts:
     print(f"Email: {acc.account_email} - Expires: {acc.credentials.expiry}")
 ```
 
----
+***
+
+## 🧪 Testing
+
+This project includes comprehensive tests to ensure the reliability and functionality of all components. The test suite covers agents, Google services, and prompt management.
+
+### Running Tests
+
+To execute the test suite, make sure you have the development dependencies installed:
+
+```bash
+poetry install --with dev
+```
+
+Then run the tests using pytest:
+
+```bash
+# Run all tests
+poetry run pytest
+
+# Run tests with verbose output
+poetry run pytest -v
+
+# Run tests from a specific directory
+poetry run pytest test/agents/
+
+# Run tests with coverage report
+poetry run pytest --cov=src
+```
+
+### ⚠️ Important Note on Test Costs
+
+**All tests within `test/agents/` utilize the LLM and will incur costs when executed.** These tests make actual API calls to the language model to verify agent behavior and responses.
+
+Before running agent tests, ensure you have:
+
+* Valid API credentials configured
+* Sufficient API credits/budget
+* Understanding of the associated costs
+
+To minimize costs during development, you can:
+
+* Run specific test files instead of the full suite
 
 ## ▶️ Run the Orchestrator
+
 Once you have completed the previous steps, you can run the orchestrator.
 
 Run the `test_end_to_end.ipynb` notebook. It will include create an interactive cell for chat.
 
----
+***

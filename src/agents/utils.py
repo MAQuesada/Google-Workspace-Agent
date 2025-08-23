@@ -1,6 +1,8 @@
 from typing import Any, Dict, Optional
 from langgraph.checkpoint.postgres import PostgresSaver
+from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.runnables import RunnableConfig
+from psycopg_pool import ConnectionPool
 from langgraph.checkpoint.base import (
     ChannelVersions,
     Checkpoint,
@@ -11,6 +13,7 @@ from collections.abc import AsyncIterator, Sequence
 from langgraph.types import Command
 from langchain_core.messages import ToolMessage
 from functools import wraps
+import os
 
 
 class PostgresSaverCustom(PostgresSaver):
@@ -161,3 +164,44 @@ def limit_calls(max_calls=10):
         return wrapper
 
     return decorator
+
+
+def create_checkpointer():
+    """
+    Factory function to create the appropriate checkpointer based on environment.
+    In test environment, uses MemorySaver to avoid database connections.
+    In production, uses PostgresSaverCustom with connection pool.
+    """
+    # Check if we're in a test environment
+    is_test_env = (
+        os.environ.get("TESTING") == "true"
+        or "pytest" in os.environ.get("PYTEST_CURRENT_TEST", "")
+        or os.environ.get("PYTEST") == "true"
+    )
+
+    if is_test_env:
+        return MemorySaver()
+    else:
+        DB_URI = os.environ.get("POSTGRES_DB_URI")
+        if not DB_URI:
+            raise ValueError(
+                "POSTGRES_DB_URI environment variable is required for production"
+            )
+
+        pool = ConnectionPool(
+            conninfo=DB_URI,
+            min_size=3,
+            max_size=3,
+            max_lifetime=900,
+            max_waiting=12,
+            max_idle=180,
+            kwargs={
+                "autocommit": True,
+                "prepare_threshold": 0,
+            },
+        )
+        # Get a connection from the pool to pass to PostgresSaverCustom
+        with pool.connection() as conn:
+            checkpointer = PostgresSaverCustom(conn)
+            checkpointer.setup()
+            return checkpointer
