@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from agents.calendar.worker import google_calendar_worker
 from agents.contacts.worker import google_contact_worker
 from agents.emails.worker import google_email_worker
+from agents.search.worker import google_search_worker
 from agents.orchestrator.setup import (
     GraphState,
     main_model,
@@ -30,6 +31,12 @@ from agents.orchestrator.emails_prompts import (
     EMAIL_MANAGER_END_PROMPT,
     EMAIL_MANAGER_SYSTEM_PROMPT,
 )
+
+from agents.orchestrator.search_prompts import (
+    SEARCH_MANAGER_SYSTEM_PROMPT,
+    SEARCH_MANAGER_END_PROMPT,   
+)
+
 
 from google_service.core import get_user_service
 from utils.config import get_config
@@ -288,3 +295,78 @@ async def email_manage_node(
         goto="feedback_synthesizer",
         update={"supervisors_messages": supervisors_messages},
     )
+
+async def search_manage_node(
+    state: GraphState,
+) -> Command[Literal["feedback_synthesizer"]]:
+    """An LLM-based router for search management."""
+    supervisors_messages = state["supervisors_messages"]
+
+    # For search, we don't need user accounts, but we create a simple worker info dict
+    search_workers_info_dict = {"google_search": "Web search using Google"}
+
+    class WorkerRouter(BaseModel):
+        name: Literal["google_search"] = Field(
+            description="The search worker to be called to execute the task."
+        )
+        task: str = Field(
+            description="A detailed description of the search task to perform."
+        )
+
+    class WorkerRouterList(BaseModel):
+        """Search worker to route to tasks. If no workers needed, use an empty list `[]`."""
+
+        workers: List[WorkerRouter]
+
+    system_mess = [
+        SystemMessage(
+            content=SEARCH_MANAGER_SYSTEM_PROMPT.format(
+                search_workers_info_dict=search_workers_info_dict
+            )
+        )
+    ]
+    messages = system_mess + supervisors_messages
+
+    response: WorkerRouterList = main_model.with_structured_output(
+        WorkerRouterList
+    ).invoke(messages)
+
+    if response.workers == []:
+        ai_manager_answer = mini_model.invoke(
+            [
+                SystemMessage(
+                    content=SEARCH_MANAGER_END_PROMPT.format(
+                        search_workers_info_dict=search_workers_info_dict
+                    )
+                )
+            ]
+            + supervisors_messages
+        )
+        supervisors_messages += [ai_manager_answer]
+        return Command(
+            goto="feedback_synthesizer",
+            update={"supervisors_messages": supervisors_messages},
+        )
+
+    # Execute search workers
+    search_results = []
+    for worker in response.workers:
+        result = await google_search_worker.ainvoke({
+            "workers_messages": [HumanMessage(content=worker.task)],
+            "user_id": state["user_id"],
+            "num_calls": [],
+        })
+        search_results.append(result)
+
+    for i, result in enumerate(search_results):
+        worker = response.workers[i]
+        supervisors_messages += [
+            AIMessage(content=worker.task, name=worker.name),
+            AIMessage(content=result["workers_messages"][-1].content, name=worker.name),
+        ]
+
+    return Command(
+        goto="feedback_synthesizer",
+        update={"supervisors_messages": supervisors_messages},
+    )
+

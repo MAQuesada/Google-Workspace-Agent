@@ -19,6 +19,7 @@ orchestrator_outputs_tuple = (
     "contacts_manage",
     "email_manage",
     "calendar_manage",
+    "search_manage"
 )
 
 verificaton_outputs_tuple = ("ask_to_user", "error", "continue")

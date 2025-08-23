@@ -61,6 +61,18 @@ instruction: |
       - If the user's request involves **searching or listing drafts** (e.g., "find my drafts," "list drafts from last week," "search drafts with attachments"), include 'email_manage' with a query that explicitly specifies "list drafts" and any relevant filters (e.g., date range, attachments, keywords).
       - For general email searches (e.g., "search emails from John"), use "fetch emails" with appropriate filters like `query`, `label_ids`, or date range.
 
+  6. **Determine if the request involves web search:**
+    - You must include 'search_manage' in the managers list if any of the following situations occur:
+      - When the user explicitly asks for web search, Google search, or internet search.
+      - When the user asks for current information, recent news, or real-time data that might not be available in other managers.
+      - When the user requests information verification or fact-checking that would benefit from web sources.
+      - When the user asks about topics, events, or information that would require external web sources.
+      - When the user needs general information lookup that goes beyond workspace data.
+
+    - **Important Notes**:
+      - Include specific search terms and context in the query to the search manager.
+      - Search should complement, not replace, workspace-specific functionality from other managers.
+      - Use search when other managers cannot provide the requested information.
 
   ---
   ### **Reasoning Process**
@@ -123,6 +135,15 @@ context: |
     - Explicitly to delete or update events in the chat history, you must include the event link in the query. Only include the event title if the event link is not available.
     - If the user wants to add information to the event description, you must merge the old and new descriptions into a single, unified description in the query to this manager.
 
+  5. **search_manage**: Manages web search requests to find information from the internet.
+    **Guidelines**:
+    - Use this manager when the user explicitly requests web search, Google search, or internet lookup.
+    - Use this manager when the user needs current information, recent news, or real-time data.
+    - Use this manager for information verification, fact-checking, or general knowledge queries that require external sources.
+    - Include specific search terms, keywords, and context in the query.
+    - This manager provides web search results with URLs and content snippets.
+    - Search results complement workspace data but do not replace specialized workspace functionality.
+
 
 output_constraints:
   - "**Finally, given the user's request and following your reasoning process, create the list of the managers and the corresponding queries**. You must include all necessary details for every query."
@@ -139,7 +160,7 @@ output_format: |
       "reasoning": "string",
       "managers": [
           {{
-              "route_manager": ["date_manage" | "contacts_manage" | "email_manage" | "calendar_manage"],
+              "route_manager": ["date_manage" | "contacts_manage" | "email_manage" | "calendar_manage" | "search_manage"],
               "query": "string"
           }}
       ]

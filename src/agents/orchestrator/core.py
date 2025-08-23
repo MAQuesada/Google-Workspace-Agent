@@ -16,6 +16,7 @@ from agents.orchestrator.manager_nodes import (
     calendar_manage_node,
     contacts_manage_node,
     date_manage_node,
+    search_manage_node,  
 )
 from agents.utils import PostgresSaverCustom
 
@@ -30,6 +31,7 @@ orchestrator_builder.add_node("date_manage", date_manage_node)
 orchestrator_builder.add_node("calendar_manage", calendar_manage_node)
 orchestrator_builder.add_node("email_manage", email_manage_node)
 orchestrator_builder.add_node("contacts_manage", contacts_manage_node)
+orchestrator_builder.add_node("search_manage", search_manage_node)  
 orchestrator_builder.add_node("feedback_synthesizer", feedback_synthesizer_node)
 orchestrator_builder.add_edge(START, "orchestrator_input")
 

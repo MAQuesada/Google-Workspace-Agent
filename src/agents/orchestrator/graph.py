@@ -13,6 +13,7 @@ from langgraph.types import Command
 from agents.orchestrator.calendar_prompts import FEEDBACK_CALENDAR_MANAGER_PROMPT
 from agents.orchestrator.contacts_prompts import FEEDBACK_CONTACT_MANAGER_PROMPT
 from agents.orchestrator.emails_prompts import FEEDBACK_EMAIL_MANAGER_PROMPT
+from agents.orchestrator.search_prompts import FEEDBACK_SEARCH_MANAGER_PROMPT
 from utils.config import get_config
 
 
@@ -216,12 +217,18 @@ def feedback_synthesizer_node(state: GraphState) -> Command[Literal["orchestrato
 
     agents_chat_history = agents_chat_history[:-2]  # remove the last \n\n
 
+    # Select appropriate feedback prompt based on manager type
     if manager_response[-1]["route_manager"] == "calendar_manage":
         feedback_prompt_template = FEEDBACK_CALENDAR_MANAGER_PROMPT
     elif manager_response[-1]["route_manager"] == "email_manage":
         feedback_prompt_template = FEEDBACK_EMAIL_MANAGER_PROMPT
     elif manager_response[-1]["route_manager"] == "contacts_manage":
         feedback_prompt_template = FEEDBACK_CONTACT_MANAGER_PROMPT
+    elif manager_response[-1]["route_manager"] == "search_manage":
+        feedback_prompt_template = FEEDBACK_SEARCH_MANAGER_PROMPT
+    else:
+        # Fallback for other managers (like date_manage) - they handle their own responses
+        feedback_prompt_template = FEEDBACK_EMAIL_MANAGER_PROMPT
 
     ai_response = mini_model.invoke(
         input=feedback_prompt_template.format(
