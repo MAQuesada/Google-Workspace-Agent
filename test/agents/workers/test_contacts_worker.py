@@ -4,49 +4,7 @@ import pytest
 
 from agents.contacts.worker import google_contact_worker
 
-
-def _extract_final_ai_message_content(worker_result):
-    """
-    Return the content string of the last AI message in workers_messages.
-    Falls back to returning the last message's content.
-    """
-    msgs = worker_result.get("workers_messages", [])
-    if not msgs:
-        return ""
-    # In your examples, the last item is the final assistant (AI) message.
-    return msgs[-1].content
-
-
-def _extract_json_block(text: str):
-    """
-    Extract a JSON code block from an assistant response like:
-
-    ```json
-    { ... }
-    ```
-
-    If no fenced block is found, try raw JSON parsing.
-    """
-    if not isinstance(text, str):
-        return None
-
-    # fenced block
-    m = re.search(r"```json\s*(\{.*?\})\s*```", text, flags=re.S)
-    if m:
-        try:
-            return json.loads(m.group(1))
-        except Exception:
-            pass
-
-    # try raw json
-    text = text.strip()
-    if text.startswith("{") and text.endswith("}"):
-        try:
-            return json.loads(text)
-        except Exception:
-            pass
-
-    return None
+from conftest import _extract_final_ai_message_content, _extract_json_block
 
 
 @pytest.mark.asyncio

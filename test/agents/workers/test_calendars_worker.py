@@ -5,20 +5,7 @@ import pytest
 from agents.calendar.worker import google_calendar_worker
 
 
-def _extract_final_ai_message_content(worker_result):
-    """
-    Helper: return the content string of the last AIMessage in workers_messages.
-    Works with your worker result structure shown in the examples.
-    """
-    msgs = worker_result.get("workers_messages", [])
-    # Pick the last AI message (failsafe: fall back to last)
-    for m in reversed(msgs):
-        # In langchain, AIMessage often has 'additional_kwargs' with 'refusal' key.
-        # But safest is to check type name on the object when available.
-        # The returned dict may not carry the class, so we just return the last one.
-        # Your examples show the last item is the final assistant answer.
-        return m.content
-    return ""
+from conftest import _extract_final_ai_message_content
 
 
 def _extract_json_block(text: str):
@@ -116,7 +103,6 @@ async def test_agent_creates_event_success(
     ev = data["events"][0]
     assert ev["title"]  # agent generated title based on prompt
     assert ev["start"] and ev["end"] and ev["event_link"]
-    # From your fakes, meet_link is "https://meet.example"
     assert ev.get("meet_link") in (
         None,
         "https://meet.example",
@@ -162,7 +148,7 @@ async def test_agent_reports_conflict_on_create(
     )
     assert "events" in data
 
-    # When conflict occurs, your tools return the conflicting events via clean_event()
+    # When conflict occurs, they return the conflicting events
     # Check that at least one event is reported and resembles our preloaded one.
     assert len(data["events"]) >= 1
     titles = [e.get("title") for e in data["events"]]

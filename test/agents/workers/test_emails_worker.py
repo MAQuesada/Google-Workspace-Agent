@@ -4,47 +4,36 @@ import base64
 import pytest
 
 from agents.emails.worker import google_email_worker
+from conftest import _extract_final_ai_message_content, _extract_json_block
 
 
-def _extract_final_ai_message_content(worker_result):
-    """
-    Return the content string of the last AI message in workers_messages.
-    Falls back to returning the last message's content.
-    """
-    msgs = worker_result.get("workers_messages", [])
-    if not msgs:
-        return ""
-    # In your examples, the last item is the final assistant (AI) message.
-    return msgs[-1].content
+# def _extract_json_block(text: str):
+#     """
+#     Extract a JSON code block from a message like:
 
+#     ```json
+#     { ... }
+#     ```
 
-def _extract_json_block(text: str):
-    """
-    Extract a JSON code block from a message like:
+#     If no fenced block is found, try raw JSON parsing.
+#     """
+#     if not isinstance(text, str):
+#         return None
 
-    ```json
-    { ... }
-    ```
+#     m = re.search(r"```json\s*(\{.*?\})\s*```", text, flags=re.S)
+#     if m:
+#         try:
+#             return json.loads(m.group(1))
+#         except Exception:
+#             pass
 
-    If no fenced block is found, try raw JSON parsing.
-    """
-    if not isinstance(text, str):
-        return None
-
-    m = re.search(r"```json\s*(\{.*?\})\s*```", text, flags=re.S)
-    if m:
-        try:
-            return json.loads(m.group(1))
-        except Exception:
-            pass
-
-    text = text.strip()
-    if text.startswith("{") and text.endswith("}"):
-        try:
-            return json.loads(text)
-        except Exception:
-            pass
-    return None
+#     text = text.strip()
+#     if text.startswith("{") and text.endswith("}"):
+#         try:
+#             return json.loads(text)
+#         except Exception:
+#             pass
+#     return None
 
 
 def _mk_msg(id_, subject, frm, to, body_text="Body text", unix_ms="1710000000000"):
