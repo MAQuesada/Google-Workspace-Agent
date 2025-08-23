@@ -2,6 +2,7 @@ from typing import Any, Dict, Optional
 from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.runnables import RunnableConfig
+from psycopg_pool import ConnectionPool
 from langgraph.checkpoint.base import (
     ChannelVersions,
     Checkpoint,
@@ -181,8 +182,6 @@ def create_checkpointer():
     if is_test_env:
         return MemorySaver()
     else:
-        from psycopg_pool import ConnectionPool
-
         DB_URI = os.environ.get("POSTGRES_DB_URI")
         if not DB_URI:
             raise ValueError(

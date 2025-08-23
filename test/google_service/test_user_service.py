@@ -141,7 +141,7 @@ def test_associate_account_replaces_existing_same_email(
     )
     user_service.save_user(User(username="alice", accounts=[existing]))
 
-    acc = user_service.associate_account(
+    user_service.associate_account(
         username="alice",
         refresh_token="refresh-xyz",
         account_info="new-info",
