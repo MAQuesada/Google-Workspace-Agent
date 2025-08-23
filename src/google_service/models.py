@@ -5,6 +5,9 @@ from uuid import uuid4
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from pydantic import BaseModel, Field
+from google.auth.exceptions import RefreshError
+
+from utils.exceptions import CredentialsRefreshError
 
 
 class GoogleAccountCredentials(BaseModel):
@@ -30,14 +33,21 @@ class GoogleAccountCredentials(BaseModel):
 
     @property
     def expired(self):
-        """Check if the token has expired."""
+        """Check if the token has expired. Treat missing expiry or token as expired."""
+        if not self.expiry or not self.token:
+            return True
         current_datetime = datetime.datetime.now()
         return current_datetime + datetime.timedelta(minutes=5) > self.expiry
 
     def refresh(self) -> None:
         """Refresh the token."""
         creds = self.google_credentials
-        creds.refresh(Request())
+        try:
+            creds.refresh(Request())
+        except RefreshError as e:
+            raise CredentialsRefreshError(
+                f"Inform to the user that the Token has been expired or revoked: {e}"
+            ) from e
         self.token = creds.token
         self.expiry = creds.expiry
 
@@ -51,4 +61,4 @@ class GoogleAccount(BaseModel):
 class User(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
     username: str
-    accounts: List[GoogleAccount] = []
+    accounts: List[GoogleAccount] = Field(default_factory=list)

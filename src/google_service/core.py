@@ -9,8 +9,13 @@ import requests
 from src.google_service.storage import KeyValueStore
 from src.google_service.models import User, GoogleAccount, GoogleAccountCredentials
 
+<<<<<<< HEAD
 from src.utils.config import get_config
 from src.utils.exceptions import UserError
+=======
+from utils.config import get_config
+from utils.exceptions import UserError, CredentialsRefreshError
+>>>>>>> main
 
 config = get_config()
 
@@ -111,7 +116,16 @@ class UserService:
             return None
 
         if account.credentials.expired:
-            account.credentials.refresh()
+            try:
+                account.credentials.refresh()
+            except CredentialsRefreshError:
+                # Persist the state and signal the caller to re-authenticate
+                account.credentials.token = None
+                account.credentials.expiry = None
+                self.save_user(user)
+                raise UserError(
+                    "Your session has expired or the permissions were revoked. Please re-authenticate this account."
+                )
             self.save_user(user)
 
         return account.credentials

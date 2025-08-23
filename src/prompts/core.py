@@ -246,6 +246,6 @@ class PromptBuilder:
         return prompt_template
 
 
-def get_prompt_builder(config_path: str = "config.yaml") -> PromptBuilder:
+def get_prompt_builder(config_path: str = "src/prompts/config.yaml") -> PromptBuilder:
     """Returns instance of the PromptBuilder class."""
     return PromptBuilder(config_path)

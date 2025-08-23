@@ -1,18 +1,17 @@
 from datetime import datetime
 from operator import add
 from typing import Annotated, Any, Literal, Sequence
-
 from dotenv import find_dotenv, load_dotenv
-from langchain_core.messages import AnyMessage, BaseMessage
-from langchain_core.messages import SystemMessage
+from langchain_core.messages import AnyMessage, BaseMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph
 from langgraph.graph import END, START
-from langgraph.graph.message import add_messages
-from langgraph.prebuilt import ToolNode, tools_condition
-from pydantic import BaseModel
-from typing_extensions import TypedDict
+from langgraph.prebuilt import ToolNode
 
+from src.agents.setup import WorkersState, tools_condition_worker
+from prompts.core import get_prompt_builder
+from utils.config import get_config
+from agents.calendar.tool_google import calendar_toolset_google
 from src.prompts.core import get_prompt_builder
 from src.utils.config import get_config
 from src.agents.calendar.tool_google import calendar_toolset_google
@@ -24,29 +23,10 @@ CALENDAR_WORKER_TEMPLATE = get_prompt_builder("src/prompts/config.yaml").build_p
 )[0]
 
 
-class WorkersState(TypedDict):
-    """The state of the worker agents."""
-
-    workers_messages: Annotated[Sequence[BaseMessage], add_messages]
-    user_id: str
-    account_name: str
-    num_calls: Annotated[list[str], add]
-
-
-def tools_condition_worker(
-    state: list[AnyMessage] | dict[str, Any] | BaseModel,
-    messages_key: str = "workers_messages",
-) -> Literal["tools", "__end__"]:
-    """Wrapper to use a message_key different from `message`
-    in the pre-built `tools_condition` function.
-    """
-    return tools_condition(state, messages_key)
-
-
 def create_calendar_graph(
     tools: list,
     calendar_worker_template: str = CALENDAR_WORKER_TEMPLATE,
-    llm=ChatOpenAI(model="gpt-4o-mini", temperature=0.0),
+    llm=ChatOpenAI(model=get_config().MAIN_MODEL, temperature=0.0),
 ):
     """
     Creates a calendar graph with customizable parameters.
@@ -54,7 +34,7 @@ def create_calendar_graph(
     Args:
         tools (list): The tools to use in the calendar graph.
         calendar_worker_template (str): The template for the calendar worker. Defaults to CALENDAR_WORKER_TEMPLATE.
-        llm : The language model to use. Defaults to ChatOpenAI(model="gpt-4o-mini", temperature=0.0).
+        llm : The language model to use.
 
     Returns:
         StateGraph: A compiled state graph for calendar operations.
