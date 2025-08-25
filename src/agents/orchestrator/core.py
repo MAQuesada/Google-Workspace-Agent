@@ -1,3 +1,5 @@
+from psycopg_pool import ConnectionPool
+import os
 from langgraph.graph import StateGraph
 from langgraph.graph import START
 from agents.orchestrator.setup import (
@@ -14,8 +16,9 @@ from agents.orchestrator.manager_nodes import (
     calendar_manage_node,
     contacts_manage_node,
     date_manage_node,
+    search_manage_node,  
 )
-from agents.utils import create_checkpointer
+from agents.utils import PostgresSaverCustom
 
 # build the graph
 orchestrator_builder = StateGraph(GraphState)
@@ -28,10 +31,27 @@ orchestrator_builder.add_node("date_manage", date_manage_node)
 orchestrator_builder.add_node("calendar_manage", calendar_manage_node)
 orchestrator_builder.add_node("email_manage", email_manage_node)
 orchestrator_builder.add_node("contacts_manage", contacts_manage_node)
+orchestrator_builder.add_node("search_manage", search_manage_node)  
 orchestrator_builder.add_node("feedback_synthesizer", feedback_synthesizer_node)
 orchestrator_builder.add_edge(START, "orchestrator_input")
 
 
-# Use the factory function to create the appropriate checkpointer
-checkpointer = create_checkpointer()
+DB_URI = os.environ.get("POSTGRES_DB_URI")
+
+# conservatively set the pool size to 3
+pool = ConnectionPool(
+    conninfo=DB_URI,
+    min_size=3,
+    max_size=3,
+    max_lifetime=900,
+    max_waiting=12,
+    max_idle=180,
+    kwargs={
+        "autocommit": True,
+        "prepare_threshold": 0,
+    },
+)
+checkpointer = PostgresSaverCustom(pool)
+
+checkpointer.setup()
 orchestrator_graph = orchestrator_builder.compile(checkpointer=checkpointer)
