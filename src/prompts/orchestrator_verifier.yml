@@ -35,8 +35,12 @@ instruction: |
     - When the previous manager is the 'calendar_manage', and the calendar manager could not find any events, return `"ask_to_user"` and explain the issue.
     - When the previous manager is the 'documents_manage', and the documents manager could not find any files or extract any information, return `"ask_to_user"` and explain the issue.
     - When the email manager refers to **create a draft** or **send an email**, if you can not find the recipient email adress, return `"ask_to_user"` and explain the issue.
-
-context: |
+  
+  6. If the next manager is the 'search_manage':
+    - When the previous manager is the 'email_manage', and the email manager could not find any relevant emails, return `"ask_to_user"` and explain the issue.
+    - When the previous manager is the 'documents_manage', and the documents manager could not find any files or extract any information, return `"ask_to_user"` and explain the issue.
+    - When the search manager refers to **create a summary** or **provide information**, if you can not find any relevant information from previous managers, return `"ask_to_user"` and explain the issue.
+    - When the search manager cannot find any relevant information from the web, return `"ask_to_user"` and explain the issue.
   ### **INPUT CONTEXT**
 
   These are the managers that have already been called:
