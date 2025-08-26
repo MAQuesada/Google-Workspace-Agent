@@ -1,6 +1,9 @@
 from typing import Any, Union
 from langchain_core.prompts import PromptTemplate
 import yaml
+from utils.logger import get_logger
+
+logger = get_logger("prompts")
 
 
 class PromptError(Exception):
@@ -23,7 +26,7 @@ class PromptBuilder:
         try:
             self.app_config = self.load_yaml(config_path)
         except YamlLoadError as e:
-            print(f"Error loading YAML config: {e}")
+            logger.warning(f"Error loading YAML config: {e}")
             self.app_config = {}
 
     @staticmethod
@@ -59,15 +62,31 @@ class PromptBuilder:
 
         Returns:
             A dictionary containing the file contents.
+
+        Raises:
+            YamlLoadError: If the file is not found, not readable, or not a valid YAML file.
         """
+        logger.info("Loading YAML file.", extra={"file_path": file_path})
         try:
             with open(file_path, encoding="utf-8") as f:
+                logger.info(
+                    "YAML file loaded successfully.", extra={"file_path": file_path}
+                )
                 return yaml.safe_load(f)
         except FileNotFoundError as e:
+            logger.exception(
+                "File not found.", extra={"file_path": file_path}, exc_info=e
+            )
             raise YamlLoadError("File not found.") from e
         except yaml.YAMLError as e:
+            logger.exception(
+                "Error parsing YAML file.", extra={"file_path": file_path}, exc_info=e
+            )
             raise YamlLoadError("Error parsing YAML file.") from e
         except OSError as e:
+            logger.exception(
+                "Error reading YAML file.", extra={"file_path": file_path}, exc_info=e
+            )
             raise YamlLoadError("Error reading YAML file.") from e
 
     def _format_prompt_section(
@@ -120,6 +139,7 @@ class PromptBuilder:
         Raises:
             PromptError: If the required 'instruction' field is missing.
         """
+        logger.info("Building prompt.")
         prompt_parts = []
 
         if role := prompt_data.get("role"):
@@ -196,6 +216,8 @@ class PromptBuilder:
         if not isinstance(input_variables, list):
             raise PromptError("Input variables must be a list")
 
+        logger.info("Prompt built successfully.")
+
         return "\n\n".join(prompt_parts), input_variables
 
     def build_prompt(
@@ -238,8 +260,13 @@ class PromptBuilder:
         except ValueError as e:
             raise PromptError("Error building prompt template.") from e
         if set(prompt_template.input_variables) != set(input_variables):
-            print(prompt_template.input_variables)
-            print(input_variables)
+            logger.exception(
+                "Input variables in the template do not match the expected input variables",
+                extra={
+                    "template_input_variables": prompt_template.input_variables,
+                    "expected_input_variables": input_variables,
+                },
+            )
             raise PromptError(
                 "Input variables in the template do not match the expected input variables"
             )

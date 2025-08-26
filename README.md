@@ -68,9 +68,12 @@ The system follows a hierarchical structure:
     │   ├── calendar/            # Calendar manager
     │   ├── contacts/            # Contacts manager
     │   └── date/                # Date manager
+    │   └── seach/               # Search manager
     ├── google_service/          # Google API integration
     ├── prompts/                 # System prompts for agents
     └── utils/                   # Utility functions and helpers
+    └── evaluation_notebooks/    # Notebooks for evaluations and safety
+    └── test_notebooks/          # Playground Notebooks
 ```
 
 ***

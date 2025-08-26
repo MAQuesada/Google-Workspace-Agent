@@ -1,3 +1,4 @@
+from functools import lru_cache
 import json
 from typing import Optional, List
 
@@ -11,6 +12,9 @@ from google_service.models import User, GoogleAccount, GoogleAccountCredentials
 
 from utils.config import get_config
 from utils.exceptions import UserError, CredentialsRefreshError
+from utils.logger import get_logger
+
+logger = get_logger("google_service.core")
 
 config = get_config()
 
@@ -23,16 +27,22 @@ class UserService:
         return f"user:{username}"
 
     def save_user(self, user: User):
+        logger.info("Saving user.", extra={"username": user.username})
         self.store.set(self._user_key(user.username), user.model_dump())
+        logger.info("User saved successfully.", extra={"username": user.username})
 
     def load_user(self, username: str) -> Optional[User]:
+        logger.info("Loading user.", extra={"username": username})
         data = self.store.get(self._user_key(username))
         if data:
             try:
-                return User.model_validate(data)
+                user = User.model_validate(data)
+                logger.info("User loaded successfully.", extra={"username": username})
+                return user
             except ValidationError as e:
-                print(f"Error validating user data: {e}")
+                logger.exception("Error validating user data.", exc_info=e)
                 return None
+        logger.info("User not found.", extra={"username": username})
         return None
 
     def list_accounts(self, username: str) -> List[GoogleAccount]:
@@ -47,12 +57,18 @@ class UserService:
     def associate_account(
         self, username: str, refresh_token: str, account_info: str = ""
     ) -> GoogleAccount:
+        logger.info("Associating account.", extra={"username": username})
         user = self.load_user(username)
         if not user:
             user = User(username=username)
 
+        logger.info(
+            "Creating credentials.",
+            extra={"path": config.GOOGLE_PROJECT_CREDENTIALS_PATH},
+        )
         with open(config.GOOGLE_PROJECT_CREDENTIALS_PATH, encoding="utf-8") as f:
             client_info = json.load(f)["installed"]
+        logger.info("Credentials created.", extra={"client_info": client_info})
 
         credentials = Credentials(
             None,
@@ -62,9 +78,13 @@ class UserService:
             client_secret=client_info["client_secret"],
             scopes=config.GOOGLE_SCOPES,
         )
+        logger.info("Credentials created.")
 
         credentials.refresh(Request())
+        logger.info("Credentials refreshed successfully.")
+
         email = self.fetch_user_email(credentials)
+        logger.info("User email fetched successfully.", extra={"email": email})
 
         cred_model = GoogleAccountCredentials(
             client_id=credentials.client_id,
@@ -80,20 +100,30 @@ class UserService:
             account_info=account_info,
             credentials=cred_model,
         )
+        logger.info("Account created successfully.", extra={"email": email})
 
         user.accounts = [a for a in user.accounts if a.account_email != email]
         user.accounts.append(account)
+        logger.info(
+            "Account associated to user successfully.", extra={"username": username}
+        )
 
         self.save_user(user)
+        logger.info("User saved successfully.", extra={"username": username})
+
         return account
 
     def fetch_user_email(self, credentials: Credentials) -> str:
+        logger.info("Fetching user email.")
         response = requests.get(
             "https://www.googleapis.com/oauth2/v1/userinfo",
             headers={"Authorization": f"Bearer {credentials.token}"},
         )
         if response.status_code == 200:
-            return response.json()["email"]
+            email = response.json()["email"]
+            logger.info("User email fetched successfully.", extra={"email": email})
+            return email
+        logger.error("Could not fetch user email.")
         raise UserError("Could not fetch user email")
 
     def get_account(
@@ -102,19 +132,33 @@ class UserService:
         """Get a Google account by username and email."""
         user = self.load_user(username)
         if not user:
+            logger.info("User not found.", extra={"username": username})
             return None
 
         account = next(
             (a for a in user.accounts if a.account_email == account_email), None
         )
         if not account:
+            logger.info(
+                "Account not found.",
+                extra={"username": username, "account_email": account_email},
+            )
             return None
 
         if account.credentials.expired:
             try:
                 account.credentials.refresh()
+                logger.info(
+                    "Credentials refreshed successfully.",
+                    extra={"username": username, "account_email": account_email},
+                )
+
             except CredentialsRefreshError:
                 # Persist the state and signal the caller to re-authenticate
+                logger.info(
+                    "Credentials expired or revoked.",
+                    extra={"username": username, "account_email": account_email},
+                )
                 account.credentials.token = None
                 account.credentials.expiry = None
                 self.save_user(user)
@@ -123,8 +167,13 @@ class UserService:
                 )
             self.save_user(user)
 
+        logger.info(
+            "Account found.",
+            extra={"username": username, "account_email": account_email},
+        )
         return account.credentials
 
 
+@lru_cache(maxsize=1)
 def get_user_service():
     return UserService()
