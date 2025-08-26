@@ -13,7 +13,6 @@ from langgraph.types import Command
 from agents.orchestrator.calendar_prompts import FEEDBACK_CALENDAR_MANAGER_PROMPT
 from agents.orchestrator.contacts_prompts import FEEDBACK_CONTACT_MANAGER_PROMPT
 from agents.orchestrator.emails_prompts import FEEDBACK_EMAIL_MANAGER_PROMPT
-from agents.orchestrator.search_prompts import FEEDBACK_SEARCH_MANAGER_PROMPT
 from utils.config import get_config
 
 
@@ -140,7 +139,7 @@ async def orchestrator_output_node(
 async def orchestrator_node(
     state: GraphState,
 ) -> Command[Literal[orchestrator_outputs_tuple + ("orchestrator_output",)]]:
-    """An orchestrator node. Eexecution point of managers in the graph."""
+    """An orchestrator node. Execution point of managers in the graph."""
 
     # no more managers to route
     if state["manager_list"] == []:
@@ -212,7 +211,7 @@ def feedback_synthesizer_node(state: GraphState) -> Command[Literal["orchestrato
     # we just need the agents messages to be able to synthesize the feedback
     # in 0 is the orchestrator query, in 1,3,5...(odd) is the supervisor query
     for i, mess in enumerate(state["supervisors_messages"][2::2]):
-        agents_chat_history += f" ### Message {i+1} - Agent/Account: {mess.name}:\n"
+        agents_chat_history += f" ### Message {i + 1} - Agent/Account: {mess.name}:\n"
         agents_chat_history += f"```{mess.content}```\n\n"
 
     agents_chat_history = agents_chat_history[:-2]  # remove the last \n\n
@@ -224,11 +223,12 @@ def feedback_synthesizer_node(state: GraphState) -> Command[Literal["orchestrato
         feedback_prompt_template = FEEDBACK_EMAIL_MANAGER_PROMPT
     elif manager_response[-1]["route_manager"] == "contacts_manage":
         feedback_prompt_template = FEEDBACK_CONTACT_MANAGER_PROMPT
-    elif manager_response[-1]["route_manager"] == "search_manage":
-        feedback_prompt_template = FEEDBACK_SEARCH_MANAGER_PROMPT
+
     else:
         # Fallback for other managers (like date_manage) - they handle their own responses
-        feedback_prompt_template = FEEDBACK_EMAIL_MANAGER_PROMPT
+        raise ValueError(
+            f"Invalid manager type: {manager_response[-1]['route_manager']}"
+        )
 
     ai_response = mini_model.invoke(
         input=feedback_prompt_template.format(

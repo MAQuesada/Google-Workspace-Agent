@@ -12,6 +12,7 @@ from agents.utils import limit_calls
 # Load SerpAPI key from .env
 load_dotenv()
 SERPAPI_API_KEY = os.getenv("SERP_API_KEY")
+NUM_RESULTS = 3
 
 
 class GoogleSearchSchema(BaseModel):
@@ -20,7 +21,7 @@ class GoogleSearchSchema(BaseModel):
     query: str = Field(..., description="The search query to look up on Google.")
 
 
-@limit_calls(max_calls=10)
+@limit_calls(max_calls=3)
 def perform_google_search(
     tool_call_id: Annotated[str, InjectedToolCallId],
     state: Annotated[dict, InjectedState],
@@ -35,7 +36,7 @@ def perform_google_search(
         {
             "q": query,
             "api_key": SERPAPI_API_KEY,
-            "num": 3,
+            "num": NUM_RESULTS,
         }
     )
 
@@ -46,12 +47,15 @@ def perform_google_search(
     if not organic:
         return {"answer": f"No search results found for: {query}", "results": []}
 
-    for result in organic[:3]:
+    for result in organic[:NUM_RESULTS]:
         content = result.get("snippet") or ""
         clean_text = re.sub(r"<.*?>", "", content)
         output.append({"url": result.get("link", ""), "content": clean_text.strip()})
 
-    return {"answer": f"Top 3 search results for: {query}", "results": output}
+    return {
+        "answer": f"Top {NUM_RESULTS} search results for: {query}",
+        "results": output,
+    }
 
 
 google_search_tool = StructuredTool(

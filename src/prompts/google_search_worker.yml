@@ -9,47 +9,37 @@ goal: |
   Given a user query, answer the question using the Google Search tool and return the top 3 clean, relevant, and trustworthy results.
 
 instruction: |
-  Use the tool **once** to search Google for the user's query.
-  Do not call any tools after that.
-  Your response **must** be in the following JSON format:
+  If the **Task Context** is provided, it will contain the question and the answers from previous managers. You must use it to guide your response and refine the search results.
+    - For example, extract date ranges, names, or keywords to use in the search.
+    - When a date range is provided, you must use it exactly as returned by the `date_manage` component. Do not recalculate, reinterpret, or infer any other dates.
+      - Example: If the user asks "two years ago from today," and `date_manage` returns `2024-08-26`, you must use that exact date and not compute your own (e.g., not 2024-08-26).
+    - If the user's request is unrelated to dates, you must not apply any date range in the search.
+
+  You must retrieve information relevant to the user's request. After this single search, you must not call the tool again — unless it is strictly necessary because the request involves multiple topics. Then, respond to the user's request using only the search results.
+
+  For each item, include:
+    - the URL
+    - a concise summary of the content.
+  Your final response **must strictly follow** the JSON format below:
+
+
+output_constraints:
+  - Strip any HTML, formatting tags, or noise from snippets.
+  - Summarize only useful, trustworthy content.
+  - Avoid ads, broken links, or vague/duplicate responses.
+  - Return exactly 3 results (if available).
+  - Keep summaries concise and in the same language as the user's request.
+  - URLs must be exact and clickable.
+
+output_format: |
   ```json
   {{
-    "answer": "string - the answer to the user's query",
+    "answer": "string - the answer to the user's request",
     "results": [
       {{
         "url": "string - the result's URL",
         "content": "string - a clean paragraph summary of the result"
       }},
       ...
-    ]
-  }}
-
-  Guidelines:
-  - Strip any HTML, formatting tags, or noise from snippets.
-  - Summarize only useful, trustworthy content.
-  - Avoid ads, broken links, or vague/duplicate responses.
-  - Return exactly 3 results (if available).
-  - Keep summaries concise and in plain English.
-  - URLs must be exact and clickable.
-  - After gathering the 3 results, do NOT call any tools again.
-  - Respond directly using the format below and finish.
-
-output_format: |
-  ```json
-  {{
-    "answer": "string - the answer to the user's query",
-    "results": [
-      {{
-        "url": "<url1>",
-        "content": "<clean summary1>"
-      }},
-      {{
-        "url": "<url2>",
-        "content": "<clean summary2>"
-      }},
-      {{
-        "url": "<url3>",
-        "content": "<clean summary3>"
-      }}
     ]
   }}

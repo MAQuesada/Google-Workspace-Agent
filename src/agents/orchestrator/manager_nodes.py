@@ -1,43 +1,34 @@
-from agents.dates.worker import calculate_date
 from typing import Literal
 from typing import List
 
 from asgiref.sync import sync_to_async
-from langchain_core.messages import SystemMessage, AIMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langgraph.types import Command
 from pydantic import BaseModel, Field
 
 from agents.calendar.worker import google_calendar_worker
 from agents.contacts.worker import google_contact_worker
+from agents.dates.worker import calculate_date
 from agents.emails.worker import google_email_worker
-from agents.search.worker import google_search_worker
-from agents.orchestrator.setup import (
-    GraphState,
-    main_model,
-    mini_model,
-    execute_workers,
-)
-
 from agents.orchestrator.calendar_prompts import (
     CALENDAR_MANAGER_END_PROMPT,
     CALENDAR_MANAGER_SYSTEM_PROMPT,
 )
 from agents.orchestrator.contacts_prompts import (
-    CONTACT_MANAGER_SYSTEM_PROMPT,
     CONTACT_MANAGER_END_PROMPT,
+    CONTACT_MANAGER_SYSTEM_PROMPT,
 )
-
 from agents.orchestrator.emails_prompts import (
     EMAIL_MANAGER_END_PROMPT,
     EMAIL_MANAGER_SYSTEM_PROMPT,
 )
-
-from agents.orchestrator.search_prompts import (
-    SEARCH_MANAGER_SYSTEM_PROMPT,
-    SEARCH_MANAGER_END_PROMPT,   
+from agents.orchestrator.setup import (
+    GraphState,
+    execute_workers,
+    main_model,
+    mini_model,
 )
-
-
+from agents.search.worker import google_search_worker
 from google_service.core import get_user_service
 from utils.config import get_config
 
@@ -296,6 +287,7 @@ async def email_manage_node(
         update={"supervisors_messages": supervisors_messages},
     )
 
+
 async def search_manage_node(
     state: GraphState,
 ) -> Command[Literal["orchestrator"]]:
@@ -308,11 +300,13 @@ async def search_manage_node(
     manager_response = state["manager_response"]
     task = state["supervisors_messages"][-1].content
 
-    result = await google_search_worker.ainvoke({
-        "workers_messages": [HumanMessage(content=task)],
-        "user_id": state["user_id"],
-        "num_calls": [],
-    })
+    result = await google_search_worker.ainvoke(
+        {
+            "workers_messages": [HumanMessage(content=task)],
+            "user_id": state["user_id"],
+            "num_calls": [],
+        }
+    )
     manager_response[-1]["answer"] = result["workers_messages"][-1].content
 
     return Command(
