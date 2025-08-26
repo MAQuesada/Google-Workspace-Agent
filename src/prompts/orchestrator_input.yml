@@ -18,10 +18,9 @@ instruction: |
   ### **Decision Logic**
   Determine if we have to use any of the managers, and what query we must make to each of them.
 
-  1. **If the user's request is purely informational (does not include asking by dates) and does not require manager intervention, or if the user asks for his/her own information, as his/her name or account list**, return an empty list `[]`.
-
-  2. **Determine the need for date/time calculation in the user query:**
+  1. **Determine the need for date/time calculation in the user query:**
     - Always include 'date_manage' as the first item in the 'managers' list **only if** a time range or specific date calculation is required. **After that, you can add other managers**.
+    - Always include `date_manage` when the user's request refers to relative time expressions (e.g., hours ago, days ago, months ago, years ago, before, after, etc.).
     - Ensure the query is structured so that 'date_manage' can extract relevant temporal details.
     - When the user asks about their upcoming or past events, the 'date_manage' must first be called to determine the date range within a 15-day interval from the current day and then the 'calendar_manage' to get the events related to the user's request in the date range.
     - When the user asks about their availability or free time, you must first call the 'date_manage' to determine the date or time range, and then call the 'calendar_manage' to retrieve the free slots within that range. You cannot determine availability or free time by yourself.
@@ -30,7 +29,7 @@ instruction: |
       - The request does not involve date/time calculations.
       - The request is an update or deletion of a calendar event **and sufficient date/time details are already available** (either provided by the user or inferred from previous messages).
 
-  3. **Determine if the request involves contacts management:**
+  2. **Determine if the request involves contacts management:**
     - You must include 'contacts_manage' in the managers list if any of the following situations occur:
       - When the user asks to create, delete, update, or find a contact or asks for information about contacts.
       - If the request is related to contacts in general or related to the name of a person, for example: send an email to a given contact Mary or add to the event to Mary.
@@ -38,7 +37,7 @@ instruction: |
       - If it is necessary to retrieve info about contacts in order to take action in other managers. In the case, be sure to include 'contacts_manage' in the query and the other managers.
       - By default, search contacts only in the personal account. If the user specifies a particular account, search within that account. If the user refers to all accounts, search across all accounts.
 
-  4. **Determine if the request involves calendar events:**
+  3. **Determine if the request involves calendar events:**
     - You must include 'calendar_manage' in the managers list if any of the following situations occur:
       - When the user asks to create, delete, find or update an event.
       - When the user wants to manage her/his time and/or calendar.
@@ -48,7 +47,7 @@ instruction: |
       - Ensure to include all relevant event details in the query to the calendar manager.
       - For updating or deleting events of the message history, you must include the **event link** in the query. Only include the event title if the event link is not available.
 
-  5. **Determine if the request involves emails:**
+  4. **Determine if the request involves emails:**
     - You must include 'email_manage' in the 'managers' list if any of the following situations occur:
       - When the user asks information his/her emails.
       - When the user asks you to create, update or in general, manage the emails.
@@ -61,6 +60,18 @@ instruction: |
       - If the user's request involves **searching or listing drafts** (e.g., "find my drafts," "list drafts from last week," "search drafts with attachments"), include 'email_manage' with a query that explicitly specifies "list drafts" and any relevant filters (e.g., date range, attachments, keywords).
       - For general email searches (e.g., "search emails from John"), use "fetch emails" with appropriate filters like `query`, `label_ids`, or date range.
 
+  5. **Determine if the request involves web search:**
+    - Include `search_manage` in the managers list when the user's request is a question or explicitly asks for web, Google, or internet search, or requests information, news, real-time data, verification, or fact-checking.
+    - If the request involves calculating or interpreting a date range, always include `date_manage` first, followed by `search_manage`.
+      - Do not omit `date_manage` even if the request contains relative dates (e.g., "two years ago", "last week").
+      - The only exception is when the user provides an exact date (e.g., a specific year and month), in which case `date_manage` can be omitted.
+
+    - **Important Notes**:
+      - Include specific search terms and context in the query to the search manager.
+      - Search should complement, not replace, workspace-specific functionality from other managers.
+      - Use search when other managers cannot provide the requested information.
+
+  6. **If the user's request is not a question, and does not require manager intervention, or if the user asks for his/her own information, as his/her name or account list**, return an empty list `[]`. Also if the user's request is not related to the managers, return an empty list `[]`.
 
   ---
   ### **Reasoning Process**
@@ -123,6 +134,16 @@ context: |
     - Explicitly to delete or update events in the chat history, you must include the event link in the query. Only include the event title if the event link is not available.
     - If the user wants to add information to the event description, you must merge the old and new descriptions into a single, unified description in the query to this manager.
 
+  5. **search_manage**: Manages web search requests to find information from the internet to answer the user's request using actual data.
+
+    **Guidelines**:
+    - Use this manager when the user explicitly requests web search, Google search, or internet lookup.
+    - Use this manager when the user needs current information, recent news, or real-time data.
+    - Use this manager for information verification, fact-checking, or general knowledge queries that require external sources.
+    - Include specific search terms, keywords, and context in the query.
+    - This manager provides web search results with URLs and content snippets.
+    - Search results complement workspace data but do not replace specialized workspace functionality.
+
 
 output_constraints:
   - "**Finally, given the user's request and following your reasoning process, create the list of the managers and the corresponding queries**. You must include all necessary details for every query."
@@ -139,7 +160,7 @@ output_format: |
       "reasoning": "string",
       "managers": [
           {{
-              "route_manager": ["date_manage" | "contacts_manage" | "email_manage" | "calendar_manage"],
+              "route_manager": ["date_manage" | "contacts_manage" | "email_manage" | "calendar_manage" | "search_manage"],
               "query": "string"
           }}
       ]

@@ -14,24 +14,28 @@ from agents.orchestrator.manager_nodes import (
     calendar_manage_node,
     contacts_manage_node,
     date_manage_node,
+    search_manage_node,
 )
 from agents.utils import create_checkpointer
+from utils.exceptions import OrchestratorInitializationError
 
 # build the graph
-orchestrator_builder = StateGraph(GraphState)
+try:
+    orchestrator_builder = StateGraph(GraphState)
+    orchestrator_builder.add_node("orchestrator_input", orchestrator_input_node)
+    orchestrator_builder.add_node("orchestrator_output", orchestrator_output_node)
+    orchestrator_builder.add_node("orchestrator", orchestrator_node)
+    orchestrator_builder.add_node("date_manage", date_manage_node)
+    orchestrator_builder.add_node("calendar_manage", calendar_manage_node)
+    orchestrator_builder.add_node("email_manage", email_manage_node)
+    orchestrator_builder.add_node("contacts_manage", contacts_manage_node)
+    orchestrator_builder.add_node("search_manage", search_manage_node)
+    orchestrator_builder.add_node("feedback_synthesizer", feedback_synthesizer_node)
+    orchestrator_builder.add_edge(START, "orchestrator_input")
 
-
-orchestrator_builder.add_node("orchestrator_input", orchestrator_input_node)
-orchestrator_builder.add_node("orchestrator_output", orchestrator_output_node)
-orchestrator_builder.add_node("orchestrator", orchestrator_node)
-orchestrator_builder.add_node("date_manage", date_manage_node)
-orchestrator_builder.add_node("calendar_manage", calendar_manage_node)
-orchestrator_builder.add_node("email_manage", email_manage_node)
-orchestrator_builder.add_node("contacts_manage", contacts_manage_node)
-orchestrator_builder.add_node("feedback_synthesizer", feedback_synthesizer_node)
-orchestrator_builder.add_edge(START, "orchestrator_input")
-
-
-# Use the factory function to create the appropriate checkpointer
-checkpointer = create_checkpointer()
-orchestrator_graph = orchestrator_builder.compile(checkpointer=checkpointer)
+    # Use the factory function to create the appropriate checkpointer
+    checkpointer = create_checkpointer()
+    orchestrator_graph = orchestrator_builder.compile(checkpointer=checkpointer)
+except Exception as e:
+    # logger.error("Error compiling orchestrator graph.", extra={"error": e})
+    raise OrchestratorInitializationError() from e

@@ -4,3 +4,7 @@ class UserError(Exception):
 
 class CredentialsRefreshError(Exception):
     pass
+
+
+class OrchestratorInitializationError(Exception):
+    pass
