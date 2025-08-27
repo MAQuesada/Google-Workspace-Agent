@@ -18,6 +18,9 @@ from agents.orchestrator.manager_nodes import (
 )
 from agents.utils import create_checkpointer
 from utils.exceptions import OrchestratorInitializationError
+from utils.logger import get_logger
+
+logger = get_logger("orchestrator.core")
 
 # build the graph
 try:
@@ -37,5 +40,5 @@ try:
     checkpointer = create_checkpointer()
     orchestrator_graph = orchestrator_builder.compile(checkpointer=checkpointer)
 except Exception as e:
-    # logger.error("Error compiling orchestrator graph.", extra={"error": e})
+    logger.exception("Error compiling orchestrator graph.")
     raise OrchestratorInitializationError() from e

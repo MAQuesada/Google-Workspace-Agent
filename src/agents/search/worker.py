@@ -8,6 +8,9 @@ from agents.setup import WorkersState, tools_condition_worker
 from prompts.core import get_prompt_builder
 from utils.config import get_config
 from agents.search.tool_google import search_toolset
+from utils.logger import get_logger
+
+logger = get_logger("search.worker")
 
 # Load environment variables
 _ = load_dotenv(find_dotenv())
@@ -24,12 +27,13 @@ def create_google_search_graph(
     search_worker_template: str = SEARCH_WORKER_TEMPLATE,
     llm=ChatOpenAI(model=get_config().MAIN_MODEL, temperature=0.0),
 ):
+    logger.info("Creating search graph.")
     worker_builder = StateGraph(WorkersState)
     llm_with_tools = llm.bind_tools(tools)
 
     async def llm_search_node(state: WorkersState):
         """ReAct-style LLM node that optionally calls a tool (SerpAPI)."""
-
+        logger.info("Calling the search worker.")
         # Inject system prompt only if not already present
         if (
             not state["workers_messages"]
@@ -55,7 +59,7 @@ def create_google_search_graph(
     )
     worker_builder.add_edge("search_tool_node", "llm_with_search_tool")
     worker_builder.add_edge(START, "llm_with_search_tool")
-
+    logger.info("Search graph created successfully.")
     return worker_builder.compile()
 
 

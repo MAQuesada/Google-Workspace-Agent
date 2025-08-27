@@ -34,6 +34,9 @@ from agents.orchestrator.setup import (
     mini_model,
 )
 from google_service.core import get_user_service
+from utils.logger import get_logger
+
+logger = get_logger("orchestrator.graph")
 
 trimmer = trim_messages(
     max_tokens=7,  # to keep the last 3 interactions messages
@@ -49,7 +52,7 @@ async def orchestrator_input_node(
     state: GraphState,
 ) -> Command[Literal["orchestrator"]]:
     """An orchestrator node. Entry point of the graph."""
-
+    logger.info("Calling the orchestrator input node.")
     # we must create the user message
     if len(state["messages"]) == 0 or state["messages"][-1].type == "ai":
         state["messages"].append(
@@ -60,10 +63,17 @@ async def orchestrator_input_node(
             )
         )
     accounts = await sync_to_async(get_user_service().list_accounts)(state["user_id"])
-
     account_dict = {acc.account_email: acc.account_info for acc in accounts}
+    logger.info("Accounts found.", extra={"accounts": account_dict})
 
     user = await sync_to_async(get_user_service().load_user)(state["user_id"])
+
+    if user is None:
+        logger.error("User not found.", extra={"user_id": state["user_id"]})
+        return Command(
+            goto="orchestrator",
+            update={"manager_list": [], "manager_response": []},
+        )
 
     system_mes = [
         SystemMessage(
@@ -83,6 +93,10 @@ async def orchestrator_input_node(
         OrchestratorRouterList
     ).invoke(messages)
 
+    logger.info(
+        "Orchestrator input node executed successfully.",
+        extra={"managers_list": [m.route_manager for m in response.managers]},
+    )
     return Command(
         goto="orchestrator",
         update={"manager_list": response.managers, "manager_response": []},
@@ -94,6 +108,7 @@ async def orchestrator_output_node(
 ) -> Command[Literal[END]]:
     """An orchestrator node. Output point of the graph."""
 
+    logger.info("Calling the orchestrator output node.")
     # update the user message with the manager response
     state["messages"][-1] = HumanMessage(
         content=FINAL_ANSWER_TEMPLATE.format(
@@ -104,9 +119,21 @@ async def orchestrator_output_node(
         )
     )
     accounts = await sync_to_async(get_user_service().list_accounts)(state["user_id"])
-
     account_dict = {acc.account_email: acc.account_info for acc in accounts}
+    logger.info("Accounts found.", extra={"accounts": account_dict})
     user = await sync_to_async(get_user_service().load_user)(state["user_id"])
+    if user is None:
+        logger.error("User not found.", extra={"user_id": state["user_id"]})
+        return Command(
+            goto=END,
+            update={
+                "messages": [
+                    AIMessage(
+                        content="The user is not registered. Please register to use the service."
+                    )
+                ],
+            },
+        )
 
     system_mes = [
         SystemMessage(
@@ -128,6 +155,7 @@ async def orchestrator_output_node(
     async for chunk in main_model.astream(messages):
         ai_response += chunk.content
 
+    logger.info("Orchestrator output node executed successfully.")
     return Command(
         goto=END,
         update={
@@ -140,10 +168,12 @@ async def orchestrator_node(
     state: GraphState,
 ) -> Command[Literal[orchestrator_outputs_tuple + ("orchestrator_output",)]]:
     """An orchestrator node. Execution point of managers in the graph."""
+    logger.info("Calling the orchestrator/executor node.")
 
-    # no more managers to route
     if state["manager_list"] == []:
+        logger.info("No more managers to route.")
         return Command(goto="orchestrator_output")
+
     manager_list = state.get("manager_list")
     manager_response = state.get("manager_response", [])
 
@@ -153,11 +183,13 @@ async def orchestrator_node(
         and "date_manage" in str(manager_response[-1].get("route_manager"))
         and "error" in str(manager_response[-1].get("answer")).lower()
     ):
+        logger.info("Date manager failed. Returning to orchestrator output.")
         return Command(goto="orchestrator_output")
 
     next_manager = manager_list.pop(0)  # type: ignore
 
     if len(manager_response) > 0 and next_manager.route_manager != "date_manage":
+        logger.info("Calling the verifier step.")
         verification: VerificationSchema = mini_model.with_structured_output(
             VerificationSchema
         ).invoke(
@@ -168,6 +200,7 @@ async def orchestrator_node(
             )
         )
         if verification.action == "error" or verification.action == "ask_to_user":
+            logger.info("Verifier step failed. Returning to orchestrator output.")
             return Command(
                 goto="orchestrator_output",
                 update={
@@ -181,7 +214,14 @@ async def orchestrator_node(
                     ]
                 },
             )
-
+        else:
+            logger.info(
+                "Verifier step passed. Calling the next manager.",
+                extra={"next_manager": next_manager.route_manager},
+            )
+    logger.info(
+        "Calling the next manager.", extra={"next_manager": next_manager.route_manager}
+    )
     return Command(
         goto=next_manager.route_manager,
         update={
@@ -208,6 +248,11 @@ def feedback_synthesizer_node(state: GraphState) -> Command[Literal["orchestrato
     manager_response = state["manager_response"]
     agents_chat_history = ""
 
+    logger.info(
+        "Calling the feedback synthesizer node.",
+        extra={"from_manager": manager_response[-1]["route_manager"]},
+    )
+
     # we just need the agents messages to be able to synthesize the feedback
     # in 0 is the orchestrator query, in 1,3,5...(odd) is the supervisor query
     for i, mess in enumerate(state["supervisors_messages"][2::2]):
@@ -225,7 +270,10 @@ def feedback_synthesizer_node(state: GraphState) -> Command[Literal["orchestrato
         feedback_prompt_template = FEEDBACK_CONTACT_MANAGER_PROMPT
 
     else:
-        # Fallback for other managers (like date_manage) - they handle their own responses
+        logger.error(
+            "Invalid manager type.",
+            extra={"manager_type": manager_response[-1]["route_manager"]},
+        )
         raise ValueError(
             f"Invalid manager type: {manager_response[-1]['route_manager']}"
         )
@@ -240,7 +288,10 @@ def feedback_synthesizer_node(state: GraphState) -> Command[Literal["orchestrato
 
     # set the manager answer to the last orchestrator query
     manager_response[-1]["answer"] = ai_response.content
-
+    logger.info(
+        "Feedback synthesizer node executed successfully.",
+        extra={"from_manager": manager_response[-1]["route_manager"]},
+    )
     return Command(
         goto="orchestrator",
         update={

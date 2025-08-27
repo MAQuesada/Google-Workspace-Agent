@@ -31,19 +31,37 @@ from agents.orchestrator.setup import (
 from agents.search.worker import google_search_worker
 from google_service.core import get_user_service
 from utils.config import get_config
+from utils.logger import get_logger
+
+logger = get_logger("orchestrator.managers")
 
 
 async def calendar_manage_node(
     state: GraphState,
-) -> Command[Literal["feedback_synthesizer"]]:
+) -> Command[Literal["feedback_synthesizer", "orchestrator"]]:
     """An LLM-based router."""
-
+    logger.info("Calling the calendar manager.")
     supervisors_messages = state["supervisors_messages"]
+    manager_response = state["manager_response"]
 
     accounts = await sync_to_async(get_user_service().list_accounts)(state["user_id"])
-
     account_dict = {acc.account_email: acc.account_info for acc in accounts}
     google_account_list = [acc.account_email for acc in accounts]
+
+    if len(google_account_list) == 0:
+        logger.info("No calendar accounts found.")
+        manager_response[-1]["answer"] = "No calendar accounts found."
+        return Command(
+            goto="orchestrator",
+            update={
+                "supervisors_messages": [],
+                "manager_response": manager_response,
+            },
+        )
+
+    logger.info(
+        "Calendar manager accounts found.", extra={"accounts": google_account_list}
+    )
 
     class WorkerRouter(BaseModel):
         name: Literal[tuple(account_dict.keys())] = Field(  # type: ignore
@@ -72,8 +90,9 @@ async def calendar_manage_node(
     ).invoke(messages)
 
     # in this case the manager must elaborate an answer
-    # to avoid go to the feedback synthesizer with an empty ai asnwers
+    # and avoid go to the feedback synthesizer
     if response.workers == []:
+        logger.info("No calendar workers needed.")
         ai_manager_answer = mini_model.invoke(
             [
                 SystemMessage(
@@ -84,17 +103,22 @@ async def calendar_manage_node(
             ]
             + supervisors_messages
         )
-        # ensure the ai answer is in the 3rd position
-        supervisors_messages += supervisors_messages + [ai_manager_answer]
+        manager_response[-1]["answer"] = ai_manager_answer.content
         return Command(
-            goto="feedback_synthesizer",
-            update={"supervisors_messages": supervisors_messages},
+            goto="orchestrator",
+            update={
+                "supervisors_messages": [],
+                "manager_response": manager_response,
+            },
         )
 
     google_respose = [
         worker for worker in response.workers if worker.name in google_account_list
     ]
-
+    logger.info(
+        "Executing calendar workers.",
+        extra={"workers_to_execute": google_respose},
+    )
     google_results = await execute_workers(
         state["user_id"], google_respose, google_calendar_worker
     )
@@ -107,7 +131,7 @@ async def calendar_manage_node(
         supervisors_messages += [
             AIMessage(content=result["workers_messages"][-1].content, name=worker.name)
         ]
-
+    logger.info("Calendar workers executed successfully.")
     return Command(
         goto="feedback_synthesizer",
         update={"supervisors_messages": supervisors_messages},
@@ -116,11 +140,12 @@ async def calendar_manage_node(
 
 def date_manage_node(state: GraphState) -> Command[Literal["orchestrator"]]:
     """Date range extract in `Europe/Paris` timezone"""
+    logger.info("Calling the date manager.")
     manager_response = state["manager_response"]
 
     date_range_str = calculate_date(state["supervisors_messages"][-1].content)
     manager_response[-1]["answer"] = date_range_str
-
+    logger.info("Date range extracted successfully.")
     return Command(
         goto="orchestrator",
         update={
@@ -132,15 +157,29 @@ def date_manage_node(state: GraphState) -> Command[Literal["orchestrator"]]:
 
 async def contacts_manage_node(
     state: GraphState,
-) -> Command[Literal["feedback_synthesizer"]]:
+) -> Command[Literal["feedback_synthesizer", "orchestrator"]]:
     """An LLM-based router."""
-
+    logger.info("Calling the contacts manager.")
     supervisors_messages = state["supervisors_messages"]
+    manager_response = state["manager_response"]
 
     accounts = await sync_to_async(get_user_service().list_accounts)(state["user_id"])
-
     account_dict = {acc.account_email: acc.account_info for acc in accounts}
     google_account_list = [acc.account_email for acc in accounts]
+
+    if len(google_account_list) == 0:
+        logger.info("No contacts accounts found.")
+        manager_response[-1]["answer"] = "No contacts accounts found."
+        return Command(
+            goto="orchestrator",
+            update={
+                "supervisors_messages": [],
+                "manager_response": manager_response,
+            },
+        )
+    logger.info(
+        "Contacts manager accounts found.", extra={"accounts": google_account_list}
+    )
 
     class WorkerRouter(BaseModel):
         name: Literal[tuple(account_dict.keys())] = Field(  # type: ignore
@@ -169,8 +208,9 @@ async def contacts_manage_node(
     ).invoke(messages)
 
     # in this case the manager must elaborate an answer
-    # to avoid go to the feedback synthesizer with an empty ai asnwers
+    # and avoid go to the feedback synthesizer
     if response.workers == []:
+        logger.info("No contacts workers needed.")
         ai_manager_answer = mini_model.invoke(
             [
                 SystemMessage(
@@ -181,17 +221,22 @@ async def contacts_manage_node(
             ]
             + supervisors_messages
         )
-        # ensure the ai answer is in an odd position
-        supervisors_messages += supervisors_messages + [ai_manager_answer]
+        manager_response[-1]["answer"] = ai_manager_answer.content
         return Command(
-            goto="feedback_synthesizer",
-            update={"supervisors_messages": supervisors_messages},
+            goto="orchestrator",
+            update={
+                "supervisors_messages": [],
+                "manager_response": manager_response,
+            },
         )
 
     google_respose = [
         worker for worker in response.workers if worker.name in google_account_list
     ]
-
+    logger.info(
+        "Executing contacts workers.",
+        extra={"workers_to_execute": google_respose},
+    )
     google_results = await execute_workers(
         state["user_id"], google_respose, google_contact_worker
     )
@@ -204,7 +249,7 @@ async def contacts_manage_node(
         supervisors_messages += [
             AIMessage(content=result["workers_messages"][-1].content, name=worker.name)
         ]
-
+    logger.info("Contacts workers executed successfully.")
     return Command(
         goto="feedback_synthesizer",
         update={"supervisors_messages": supervisors_messages},
@@ -213,14 +258,31 @@ async def contacts_manage_node(
 
 async def email_manage_node(
     state: GraphState,
-) -> Command[Literal["feedback_synthesizer"]]:
+) -> Command[Literal["feedback_synthesizer", "orchestrator"]]:
     """An LLM-based router for email management."""
-    supervisors_messages = state["supervisors_messages"]
 
-    # Obtener cuentas de Google y Microsoft
+    logger.info("Calling the email manager.")
+    supervisors_messages = state["supervisors_messages"]
+    manager_response = state["manager_response"]
+
     accounts = await sync_to_async(get_user_service().list_accounts)(state["user_id"])
     account_dict = {acc.account_email: acc.account_info for acc in accounts}
     google_account_list = [acc.account_email for acc in accounts]
+
+    if len(google_account_list) == 0:
+        logger.info("No email accounts found.")
+        manager_response[-1]["answer"] = "No email accounts found."
+        return Command(
+            goto="orchestrator",
+            update={
+                "supervisors_messages": [],
+                "manager_response": manager_response,
+            },
+        )
+
+    logger.info(
+        "Email manager accounts found.", extra={"accounts": google_account_list}
+    )
 
     class WorkerRouter(BaseModel):
         name: Literal[tuple(account_dict.keys())] = Field(  # type: ignore
@@ -250,6 +312,7 @@ async def email_manage_node(
     ).invoke(messages)
 
     if response.workers == []:
+        logger.info("No email workers needed.")
         ai_manager_answer = mini_model.invoke(
             [
                 SystemMessage(
@@ -261,16 +324,22 @@ async def email_manage_node(
             ]
             + supervisors_messages
         )
-        supervisors_messages += [ai_manager_answer]
+        manager_response[-1]["answer"] = ai_manager_answer.content
         return Command(
-            goto="feedback_synthesizer",
-            update={"supervisors_messages": supervisors_messages},
+            goto="orchestrator",
+            update={
+                "supervisors_messages": [],
+                "manager_response": manager_response,
+            },
         )
 
     google_response = [
         worker for worker in response.workers if worker.name in google_account_list
     ]
-
+    logger.info(
+        "Executing email workers.",
+        extra={"workers_to_execute": google_response},
+    )
     google_results = await execute_workers(
         state["user_id"], google_response, google_email_worker
     )
@@ -282,6 +351,7 @@ async def email_manage_node(
             AIMessage(content=result["workers_messages"][-1].content, name=worker.name),
         ]
 
+    logger.info("Email workers executed successfully.")
     return Command(
         goto="feedback_synthesizer",
         update={"supervisors_messages": supervisors_messages},
@@ -297,6 +367,7 @@ async def search_manage_node(
     - Invokes search worker
     - Attaches answer to manager_response and returns to orchestrator
     """
+    logger.info("Calling the search manager.")
     manager_response = state["manager_response"]
     task = state["supervisors_messages"][-1].content
 
@@ -308,7 +379,7 @@ async def search_manage_node(
         }
     )
     manager_response[-1]["answer"] = result["workers_messages"][-1].content
-
+    logger.info("Search manager executed successfully.")
     return Command(
         goto="orchestrator",
         update={
