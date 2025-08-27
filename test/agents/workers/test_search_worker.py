@@ -8,6 +8,7 @@ from agents.search.worker import google_search_worker
 from conftest import _extract_final_ai_message_content, _extract_json_block
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_agent_handles_greeting_without_tools():
     """
@@ -28,6 +29,7 @@ async def test_agent_handles_greeting_without_tools():
     # No strict assertion on JSON format here—your worker greets with free text first.
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_agent_search_success(monkeypatch):
     """
@@ -103,6 +105,7 @@ async def test_agent_search_success(monkeypatch):
         assert "<" not in content and ">" not in content  # No HTML tags
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_agent_search_no_results(monkeypatch):
     """
@@ -146,6 +149,7 @@ async def test_agent_search_no_results(monkeypatch):
     assert len(data["results"]) == 0
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_agent_search_with_html_content(monkeypatch):
     """
@@ -200,6 +204,7 @@ async def test_agent_search_with_html_content(monkeypatch):
     assert "this is italic" in result_content
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_agent_search_missing_api_key(monkeypatch):
     """
@@ -222,7 +227,7 @@ async def test_agent_search_missing_api_key(monkeypatch):
 
     content = _extract_final_ai_message_content(result)
     data = _extract_json_block(content)
-    
+
     # The worker might return JSON or a text response when API key is missing
     if data is not None:
         # If JSON is returned, check for error message
@@ -239,6 +244,7 @@ async def test_agent_search_missing_api_key(monkeypatch):
         assert "search" in content.lower() or "query" in content.lower()
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_agent_search_limited_results(monkeypatch):
     """

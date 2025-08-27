@@ -4,6 +4,7 @@ import pytest
 from agents.orchestrator.core import orchestrator_graph
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_memory(mock_user_service):
     """
@@ -39,6 +40,7 @@ async def test_memory(mock_user_service):
     assert len(response["messages"]) == 6
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_memory_2(mock_user_service):
     """

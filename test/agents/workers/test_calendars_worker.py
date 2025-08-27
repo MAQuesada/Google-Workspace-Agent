@@ -64,6 +64,7 @@ async def test_agent_handles_greeting_without_tools(
     # No strict assertion on JSON format here—your worker greets with free text first.
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_agent_creates_event_success(
     fake_build, fake_user_service, state_ok, fake_store
@@ -109,6 +110,7 @@ async def test_agent_creates_event_success(
     )  # tolerant to agent formatting
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_agent_reports_conflict_on_create(
     fake_build, fake_user_service, state_ok, fake_store
@@ -154,7 +156,7 @@ async def test_agent_reports_conflict_on_create(
     titles = [e.get("title") for e in data["events"]]
     assert "Existing" in titles or any("conflict" in (t or "").lower() for t in titles)
 
-
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_agent_delete_requires_specificity(
     fake_build, fake_user_service, state_ok, fake_store

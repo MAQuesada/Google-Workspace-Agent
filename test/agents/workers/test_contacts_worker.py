@@ -7,6 +7,7 @@ from agents.contacts.worker import google_contact_worker
 from conftest import _extract_final_ai_message_content, _extract_json_block
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_agent_handles_greeting_without_tools(
     fake_build, fake_user_service, state_ok
@@ -31,6 +32,7 @@ async def test_agent_handles_greeting_without_tools(
     # No strict assertion on JSON format here—your worker greets with free text first.
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_agent_search_contacts_success(
     fake_build, fake_user_service, state_ok, fake_store
@@ -121,6 +123,7 @@ async def test_agent_search_contacts_success(
     )
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_agent_creates_contact_success(
     fake_build, fake_user_service, state_ok, fake_store
@@ -163,6 +166,7 @@ async def test_agent_creates_contact_success(
     assert len(contact["phones"]) >= 1
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_agent_reports_duplicate_on_create(
     fake_build, fake_user_service, state_ok, fake_store
@@ -214,6 +218,7 @@ async def test_agent_reports_duplicate_on_create(
     assert "Juan Pérez" in names
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_agent_delete_requires_specificity(
     fake_build, fake_user_service, state_ok, fake_store
@@ -268,6 +273,7 @@ async def test_agent_delete_requires_specificity(
     assert len(data["contacts"]) >= 1
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_agent_updates_contact_success(
     fake_build, fake_user_service, state_ok, fake_store
@@ -325,6 +331,7 @@ async def test_agent_updates_contact_success(
     assert "555-9999" in phone_numbers
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_agent_search_no_results(
     fake_build, fake_user_service, state_ok, fake_store
