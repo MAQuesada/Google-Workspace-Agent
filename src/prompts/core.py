@@ -74,19 +74,13 @@ class PromptBuilder:
                 )
                 return yaml.safe_load(f)
         except FileNotFoundError as e:
-            logger.exception(
-                "File not found.", extra={"file_path": file_path}, exc_info=e
-            )
+            logger.exception("File not found.", extra={"file_path": file_path})
             raise YamlLoadError("File not found.") from e
         except yaml.YAMLError as e:
-            logger.exception(
-                "Error parsing YAML file.", extra={"file_path": file_path}, exc_info=e
-            )
+            logger.exception("Error parsing YAML file.", extra={"file_path": file_path})
             raise YamlLoadError("Error parsing YAML file.") from e
         except OSError as e:
-            logger.exception(
-                "Error reading YAML file.", extra={"file_path": file_path}, exc_info=e
-            )
+            logger.exception("Error reading YAML file.", extra={"file_path": file_path})
             raise YamlLoadError("Error reading YAML file.") from e
 
     def _format_prompt_section(

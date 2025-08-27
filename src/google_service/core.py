@@ -39,8 +39,8 @@ class UserService:
                 user = User.model_validate(data)
                 logger.info("User loaded successfully.", extra={"username": username})
                 return user
-            except ValidationError as e:
-                logger.exception("Error validating user data.", exc_info=e)
+            except ValidationError:
+                logger.exception("Error validating user data.")
                 return None
         logger.info("User not found.", extra={"username": username})
         return None

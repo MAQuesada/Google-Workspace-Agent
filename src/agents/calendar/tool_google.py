@@ -17,7 +17,9 @@ from agents.calendar.schemas import (
 )
 from google_service.core import get_user_service
 from agents.utils import limit_calls
+from utils.logger import get_logger
 
+logger = get_logger("calendar.tools")
 calendar_toolset_google = []
 
 
@@ -66,6 +68,14 @@ def clean_event(event_list: list[dict], fields=[]):
     """
 
     cleaned_events = []
+    logger.info(
+        "Cleaning events.",
+        extra={
+            "events_number": len(event_list),
+            "fields": fields
+            + ["title", "start", "end", "event_link", "attendees", "meet_link"],
+        },
+    )
     for event in event_list:
         cleaned_event = {
             "title": event.get("summary", "Untitled"),
@@ -84,6 +94,7 @@ def clean_event(event_list: list[dict], fields=[]):
         for field in fields:
             cleaned_event[field] = event.get(field, None)
         cleaned_events.append(cleaned_event)
+    logger.info("Events cleaned successfully.")
     return cleaned_events
 
 
@@ -107,7 +118,15 @@ def find_event(
         end_date: Upper bound (exclusive) for an event's end time to filter by. Accepts ISO format with timezone (e.g., 2024-12-06T20:00:00+01:00 or 2025-05-07T00:00:00+02:00).
         timezone: Time zone used in the response. Optional. The default is "Europe/Paris" timezone.
     """
-
+    logger.info(
+        "Finding events.",
+        extra={
+            "query": query,
+            "start_date": start_date,
+            "end_date": end_date,
+            "timezone": timezone,
+        },
+    )
     events_result = (
         calendar_service.events()
         .list(
@@ -123,7 +142,12 @@ def find_event(
         .execute()
     )
 
-    return events_result.get("items", [])
+    events = events_result.get("items", [])
+    logger.info(
+        "Events found successfully.",
+        extra={"events_number": len(events)},
+    )
+    return events
 
 
 @limit_calls(max_calls=10)
@@ -152,13 +176,25 @@ def get_events(
             "details": "Please provide the `query` to search for events or  `start_date` and `end_date` to filter events by date.",
             "events": [],
         }
-
+    logger.info(
+        "Getting events tool call.",
+        extra={
+            "query": query,
+            "start_date": start_date,
+            "end_date": end_date,
+            "timezone": timezone,
+        },
+    )
     account = get_user_service().get_account(
         state["user_id"],
         state["account_name"],
     )
 
     if not account:
+        logger.warning(
+            "Account not found.",
+            extra={"user_id": state["user_id"], "account_name": state["account_name"]},
+        )
         return {
             "details": f"Please authenticate with Google first in your account: '{state['account_name']}'.",
             "events": [],
@@ -177,6 +213,7 @@ def get_events(
             "events": clean_event(events, fields=["description"]),
         }
     except Exception as e:
+        logger.exception("Error while getting events.")
         return {"details": f"Error while retrieving events: {e}", "events": []}
 
 
@@ -211,13 +248,20 @@ def find_free_slots(
     Returns:
     Dict with the details of the operation and a list of free slots found.
     """
-
+    logger.info(
+        "Finding free slots tool call.",
+        extra={"start_date": start_date, "end_date": end_date, "timezone": timezone},
+    )
     account = get_user_service().get_account(
         state["user_id"],
         state["account_name"],
     )
 
     if not account:
+        logger.warning(
+            "Account not found.",
+            extra={"user_id": state["user_id"], "account_name": state["account_name"]},
+        )
         return {
             "details": f"Please authenticate with Google first in your account: '{state['account_name']}'.",
             "events": [],
@@ -241,7 +285,10 @@ def find_free_slots(
 
         free_slots = []
         current_time = datetime.fromisoformat(start_date)
-
+        logger.debug(
+            "Busy slots found.",
+            extra={"busy_slot_number": len(busy_slots)},
+        )
         for busy in busy_slots:
             busy_start = datetime.fromisoformat(busy["start"])
             busy_end = datetime.fromisoformat(busy["end"])
@@ -257,13 +304,19 @@ def find_free_slots(
 
         # Check for free time at the end of the range
         end_datetime = datetime.fromisoformat(end_date)
+
         if (end_datetime - current_time).total_seconds() / 60 >= min_duration:
             free_slots.append(
                 {"start": current_time.isoformat(), "end": end_datetime.isoformat()}
             )
 
+        logger.info(
+            "Free slots found successfully.",
+            extra={"free_slots_number": len(free_slots)},
+        )
         return {"details": "Free slots found.", "free_slots": free_slots}
     except Exception as e:
+        logger.exception("Error while getting the free slots.")
         return {"details": f"Error while getting the free slots: {e}", "free_slots": []}
 
 
@@ -298,13 +351,25 @@ def delete_event(
     Returns:
     Dict with the details of the operation and the result of the deletion.
     """
-
+    logger.info(
+        "Deleting event tool call.",
+        extra={
+            "event_id_or_event_link": event_id_or_event_link,
+            "query": query,
+            "start_date": start_date,
+            "end_date": end_date,
+        },
+    )
     account = get_user_service().get_account(
         state["user_id"],
         state["account_name"],
     )
 
     if not account:
+        logger.warning(
+            "Account not found.",
+            extra={"user_id": state["user_id"], "account_name": state["account_name"]},
+        )
         return {
             "details": f"Please authenticate with Google first in your account: '{state['account_name']}'.",
             "events": [],
@@ -316,6 +381,7 @@ def delete_event(
             try:
                 event_id = get_event_id(event_id_or_event_link)
             except Exception as e:
+                logger.exception("Error while extracting the event ID.")
                 return {
                     "details": f"Error while extracting the event ID: {e}",
                     "events": [],
@@ -323,17 +389,23 @@ def delete_event(
             calendar_service.events().delete(
                 calendarId="primary", eventId=event_id
             ).execute()
+            logger.info(
+                "Event deleted successfully.",
+                extra={"event_id": event_id},
+            )
             return {
                 "details": f"Event with ID '{event_id}' deleted successfully.",
                 "events": [],
             }
         except Exception as e:
+            logger.exception("Error while deleting the event.")
             return {
                 "details": f"There was an error deleting the event: {e}",
                 "events": [],
             }
 
     if not start_date and not end_date and not query:
+        logger.warning("No event ID/link or query, start date, and end date provided.")
         return {
             "details": "Please provide the event ID/link or the query, start date, and end date to search for events.",
             "events": [],
@@ -342,18 +414,24 @@ def delete_event(
     try:
         events = find_event(calendar_service, query, start_date, end_date)
     except Exception as e:
+        logger.exception("Error while searching for the event to delete.")
         return {
             "details": f"There was an error searching for the event to delete: {e}",
             "events": [],
         }
 
     if not events:
+        logger.info("No events found with the query, start date, and end date.")
         return {
             "details": f"No events found with the query '{query}' between '{start_date}' and '{end_date}'.",
             "events": [],
         }
 
     if len(events) > 1:
+        logger.info(
+            "Multiple events found with the query, start date, and end date.",
+            extra={"events_number": len(events)},
+        )
         return {
             "details": "Please be more specific with the parameters query, start date, and end date. Multiple events found.",
             "events": clean_event(events),
@@ -365,11 +443,16 @@ def delete_event(
             calendarId="primary", eventId=event_id
         ).execute()
     except Exception as e:
+        logger.exception("Error while deleting the event.")
         return {
             "details": f"There was an error deleting the event: {e}",
             "events": clean_event(events),
         }
 
+    logger.info(
+        "Event deleted successfully.",
+        extra={"event_id": event_id},
+    )
     return {"details": "Event deleted successfully.", "events": clean_event(events)}
 
 
@@ -415,13 +498,31 @@ def update_event(
     Returns:
     Dict with the details of the operation and the events related.
     """
-
+    logger.info(
+        "Updating event tool call.",
+        extra={
+            "event_id_or_event_link": event_id_or_event_link,
+            "start_datetime": start_datetime,
+            "title": title,
+            "attendees": attendees,
+            "create_meeting_room": create_meeting_room,
+            "event_duration_hour": event_duration_hour,
+            "event_duration_minutes": event_duration_minutes,
+            "ignore_conflicts": ignore_conflicts,
+            "description": description,
+            "timezone": timezone,
+        },
+    )
     account = get_user_service().get_account(
         state["user_id"],
         state["account_name"],
     )
 
     if not account:
+        logger.warning(
+            "Account not found.",
+            extra={"user_id": state["user_id"], "account_name": state["account_name"]},
+        )
         return {
             "details": f"Please authenticate with Google first in your account: '{state['account_name']}'.",
             "events": [],
@@ -433,6 +534,9 @@ def update_event(
         try:
             event_id = get_event_id(event_id_or_event_link)
         except Exception as e:
+            logger.exception(
+                "Error while extracting the event ID from `event_id_or_event_link`."
+            )
             return {
                 "details": f"Error while extracting the event ID: {e}",
                 "events": [],
@@ -443,6 +547,9 @@ def update_event(
             .execute()
         )
     except Exception as e:
+        logger.exception(
+            "Error while retrieving the event.", extra={"event_id": event_id}
+        )
         return {
             "details": f"There was an error retrieving the event: {e}",
             "events": [],
@@ -474,11 +581,14 @@ def update_event(
         and event_duration_hour == 0
         and event_duration_minutes == 0
     ):
-        ignore_conflicts = (
-            True  # the event time is not changed, so no conflicts to check
-        )
+        # the event time is not changed, so no conflicts to check
+        ignore_conflicts = True
 
     if not ignore_conflicts and start_dt is not None:
+        logger.info(
+            "Checking for conflicts.",
+            extra={"start_dt": start_dt, "end_dt": event["end"]["dateTime"]},
+        )
         conflicts = find_event(
             calendar_service,
             start_date=start_dt,
@@ -490,6 +600,10 @@ def update_event(
             if ev["id"] != event_id and ev["start"].get("dateTime", None) is not None
         ]
         if real_conflicts:
+            logger.info(
+                "Conflicts found.",
+                extra={"conflicts_number": len(real_conflicts)},
+            )
             return {
                 "details": "The event cannot be updated due to conflicts with the following events.",
                 "events": clean_event(real_conflicts),
@@ -523,8 +637,12 @@ def update_event(
             .execute()
         )
     except Exception as e:
+        logger.exception("Error while updating the event.")
         return {"details": f"There was an error updating the event: {e}", "events": []}
 
+    logger.info(
+        "Event updated successfully.",
+    )
     return {
         "details": "Event updated successfully.",
         "events": clean_event([updated_event], fields=["description"]),
@@ -570,6 +688,19 @@ def create_event(
     Returns:
     Dict with the details of the operation and the created event.
     """
+    logger.info(
+        "Creating event tool call.",
+        extra={
+            "start_datetime": start_datetime,
+            "title": title,
+            "attendees": attendees,
+            "create_meeting_room": create_meeting_room,
+            "event_duration_hour": event_duration_hour,
+            "event_duration_minutes": event_duration_minutes,
+            "ignore_conflicts": ignore_conflicts,
+            "description": description,
+        },
+    )
 
     account = get_user_service().get_account(
         state["user_id"],
@@ -577,6 +708,10 @@ def create_event(
     )
 
     if not account:
+        logger.warning(
+            "Account not found.",
+            extra={"user_id": state["user_id"], "account_name": state["account_name"]},
+        )
         return {
             "details": f"Please authenticate with Google first in your account: '{state['account_name']}'.",
             "events": [],
@@ -589,7 +724,10 @@ def create_event(
     end_time = start_time + timedelta(
         hours=event_duration_hour, minutes=event_duration_minutes
     )
-
+    logger.info(
+        "End time calculated.",
+        extra={"end_time": end_time.isoformat()},
+    )
     event = {
         "summary": title,
         "start": {"dateTime": start_datetime},
@@ -616,6 +754,10 @@ def create_event(
             ev for ev in conflicts if ev["start"].get("dateTime", None) is not None
         ]
         if real_conflicts:
+            logger.info(
+                "Conflicts found.",
+                extra={"conflicts_number": len(real_conflicts)},
+            )
             return {
                 "details": "The event cannot be created due to conflicts with existing events.",
                 "events": clean_event(conflicts),
@@ -628,8 +770,10 @@ def create_event(
             .execute()
         )
     except Exception as e:
+        logger.exception("Error while creating the event.")
         return {"details": f"There was an error creating the event: {e}", "events": []}
 
+    logger.info("Event created successfully.")
     return {
         "details": "Event created successfully.",
         "events": clean_event([created_event], fields=["description"]),

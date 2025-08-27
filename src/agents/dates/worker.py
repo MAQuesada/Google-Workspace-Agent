@@ -6,8 +6,9 @@ from pytz import BaseTzInfo
 from prompts.core import get_prompt_builder
 from utils.config import get_config
 from agents.dates.schemas import DateExtractionResult
+from utils.logger import get_logger
 
-
+logger = get_logger("dates.worker")
 llm = ChatOpenAI(
     model=get_config().MAIN_MODEL, api_key=get_config().OPENAI_API_KEY, temperature=0.0
 )
@@ -443,6 +444,7 @@ def get_prompt_with_examples(current_date: datetime) -> str:
 def calculate_date(user_input: str) -> str:
     """Extract structured date information from natural language input."""
     try:
+        logger.info("Calculating date.", extra={"user_input": user_input})
         now = datetime.now(TIMEZONE)
         prompt = get_prompt_with_examples(now)
 
@@ -459,4 +461,5 @@ def calculate_date(user_input: str) -> str:
         )
 
     except Exception as e:
+        logger.exception("Error while calculating the date.")
         return f"Error: Could not process the request. Details: {str(e)}"

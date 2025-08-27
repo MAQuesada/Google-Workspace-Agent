@@ -28,8 +28,9 @@ from agents.emails.schemas import (
     SendDraftSchema,
 )
 from agents.utils import limit_calls
+from utils.logger import get_logger
 
-
+logger = get_logger("emails.tools")
 TIMEZONE = get_config().TIMEZONE
 MAX_NUM_DISPLAY_ITEMS = get_config().MAX_NUM_DISPLAY_ITEMS
 google_emails_toolset = []
@@ -59,12 +60,26 @@ def send_email(
     Returns:
         Dict with details of the operation and list of sent email data.
     """
+    logger.info(
+        "Sending email.",
+        extra={
+            "to": to,
+            "subject": subject,
+            "body": body,
+            "is_html": is_html,
+            "cc": cc,
+        },
+    )
     account = get_user_service().get_account(
         state["user_id"],
         state["account_name"],
     )
 
     if not account:
+        logger.warning(
+            "Account not found.",
+            extra={"user_id": state["user_id"], "account_name": state["account_name"]},
+        )
         return {
             "details": f"Please authenticate with Google first for account: '{state['account_name']}'.",
             "emails": [],
@@ -92,6 +107,7 @@ def send_email(
         labels = sent_message.get("labelIds", ["SENT"])
         # Genera formato ISO 8601 con segundos
         sent_date = datetime.datetime.now(TIMEZONE).isoformat(timespec="seconds")
+        logger.info("Email sent successfully.")
         return {
             "details": "Email sent successfully.",
             "emails": [
@@ -109,6 +125,7 @@ def send_email(
             ],
         }
     except Exception as e:
+        logger.exception("Error while sending email.")
         return {"details": f"Error sending email: {str(e)}", "emails": []}
 
 
@@ -248,11 +265,26 @@ def search_emails(
     Returns:
         Dict[str, List[Dict[str, str]]]: A dictionary with details and matching emails.
     """
+    logger.info(
+        "Searching emails.",
+        extra={
+            "query": query,
+            "label_ids": label_ids,
+            "specific_message_ids": specific_message_ids,
+            "has_attachment": has_attachment,
+            "start_date": start_date,
+            "end_date": end_date,
+        },
+    )
     account = get_user_service().get_account(
         state["user_id"],
         state["account_name"],
     )
     if not account:
+        logger.warning(
+            "Account not found.",
+            extra={"user_id": state["user_id"], "account_name": state["account_name"]},
+        )
         return {
             "details": f"Please authenticate with Google first for account: '{state['account_name']}'.",
             "emails": [],
@@ -279,6 +311,10 @@ def search_emails(
                     start_timestamp = int(start_dt.timestamp())
                     search_query += f" after:{start_timestamp}"
                 except ValueError:
+                    logger.warning(
+                        "Invalid start_date format. Must be in YYYY-MM-DD format.",
+                        extra={"start_date": start_date},
+                    )
                     return {
                         "details": "Invalid start_date format. Use YYYY-MM-DD.",
                         "emails": [],
@@ -293,6 +329,10 @@ def search_emails(
                     end_timestamp = int(end_dt.timestamp())
                     search_query += f" before:{end_timestamp}"
                 except ValueError:
+                    logger.warning(
+                        "Invalid end_date format. Must be in YYYY-MM-DD format.",
+                        extra={"end_date": end_date},
+                    )
                     return {
                         "details": "Invalid end_date format. Use YYYY-MM-DD.",
                         "emails": [],
@@ -370,6 +410,7 @@ def search_emails(
                     else datetime.datetime.now(TIMEZONE).isoformat(timespec="seconds")
                 )
             except Exception:
+                logger.exception("Invalid date format.")
                 date = "Invalid Date"
 
             has_attachments = has_attachments_recursive(payload.get("parts", []))
@@ -393,11 +434,19 @@ def search_emails(
         if total_count > MAX_NUM_DISPLAY_ITEMS:
             details += f" Showing first {MAX_NUM_DISPLAY_ITEMS} emails. For more results, refine your search criteria."
 
+        logger.info(
+            "Emails found successfully.",
+            extra={
+                "emails_number": total_count,
+                "emails_number_to_show": len(cleaned_emails),
+            },
+        )
         return {
             "details": details,
             "emails": cleaned_emails,
         }
     except Exception as e:
+        logger.exception("Error while searching emails.")
         return {"details": f"Error fetching emails: {str(e)}", "emails": []}
 
 
@@ -435,11 +484,25 @@ def list_threads(
     Returns:
         Dict with details of the operation and list of thread data.
     """
+    logger.info(
+        "Listing threads.",
+        extra={
+            "query": query,
+            "label_ids": label_ids,
+            "has_attachment": has_attachment,
+            "start_date": start_date,
+            "end_date": end_date,
+        },
+    )
     account = get_user_service().get_account(
         state["user_id"],
         state["account_name"],
     )
     if not account:
+        logger.warning(
+            "Account not found.",
+            extra={"user_id": state["user_id"], "account_name": state["account_name"]},
+        )
         return {
             "details": f"Please authenticate with Google first for account: '{state['account_name']}'.",
             "threads": [],
@@ -460,6 +523,10 @@ def list_threads(
                 start_timestamp = int(start_dt.timestamp())
                 search_query += f" after:{start_timestamp}"
             except ValueError:
+                logger.warning(
+                    "Invalid start_date format. Must be in YYYY-MM-DD format.",
+                    extra={"start_date": start_date},
+                )
                 return {
                     "details": "Invalid start_date format. Use YYYY-MM-DD.",
                     "threads": [],
@@ -473,6 +540,10 @@ def list_threads(
                 end_timestamp = int(end_dt.timestamp())
                 search_query += f" before:{end_timestamp}"
             except ValueError:
+                logger.warning(
+                    "Invalid end_date format. Must be in YYYY-MM-DD format.",
+                    extra={"end_date": end_date},
+                )
                 return {
                     "details": "Invalid end_date format. Use YYYY-MM-DD.",
                     "threads": [],
@@ -539,6 +610,7 @@ def list_threads(
                     else datetime.datetime.now(TIMEZONE).isoformat(timespec="seconds")
                 )
             except (ValueError, TypeError):
+                logger.exception("Invalid date format.")
                 date = "Invalid Date"
 
             thread_dict = {
@@ -560,11 +632,19 @@ def list_threads(
         if total_count > MAX_NUM_DISPLAY_ITEMS:
             details += f" Showing first {MAX_NUM_DISPLAY_ITEMS} threads. Refine your search for more results."
 
+        logger.info(
+            "Threads listed successfully.",
+            extra={
+                "threads_number": total_count,
+                "threads_number_to_show": len(cleaned_threads),
+            },
+        )
         return {
             "details": details,
             "emails": cleaned_threads,
         }
     except Exception as e:
+        logger.exception("Error while listing threads.")
         return {"details": f"Error listing threads: {str(e)}", "emails": []}
 
 
@@ -594,11 +674,19 @@ def fetch_messages_by_thread_id(
     Returns:
         Dict with details of the operation and list of message data.
     """
+    logger.info(
+        "Fetching messages by thread id.",
+        extra={"thread_id": thread_id},
+    )
     account = get_user_service().get_account(
         state["user_id"],
         state["account_name"],
     )
     if not account:
+        logger.warning(
+            "Account not found.",
+            extra={"user_id": state["user_id"], "account_name": state["account_name"]},
+        )
         return {
             "details": f"Please authenticate with Google first for account: '{state['account_name']}'.",
             "emails": [],
@@ -628,6 +716,7 @@ def fetch_messages_by_thread_id(
                     else datetime.datetime.now(TIMEZONE).isoformat(timespec="seconds")
                 )
             except Exception:
+                logger.exception("Invalid date format.")
                 date = "Invalid Date"
 
             has_attachments = has_attachments_recursive(
@@ -647,11 +736,16 @@ def fetch_messages_by_thread_id(
             }
             cleaned_emails.append(email_dict)
 
+        logger.info(
+            "Messages fetched successfully.",
+            extra={"messages_number": len(messages)},
+        )
         return {
             "details": f"Found {len(messages)} messages in thread.",
             "emails": cleaned_emails,
         }
     except Exception as e:
+        logger.exception("Error while fetching messages by thread id.")
         return {"details": f"Error fetching thread messages: {str(e)}", "emails": []}
 
 
@@ -685,12 +779,19 @@ def reply_to_thread(
     Returns:
         Dict with details of the operation and list of sent reply data.
     """
-
+    logger.info(
+        "Replying to thread.",
+        extra={"thread_id": thread_id, "body": body, "is_html": is_html},
+    )
     account = get_user_service().get_account(
         state["user_id"],
         state["account_name"],
     )
     if not account:
+        logger.warning(
+            "Account not found.",
+            extra={"user_id": state["user_id"], "account_name": state["account_name"]},
+        )
         return {
             "details": f"Please authenticate with Google first for account: '{state['account_name']}'.",
             "emails": [],
@@ -770,6 +871,7 @@ def reply_to_thread(
                 else datetime.datetime.now(TIMEZONE).isoformat(timespec="seconds")
             )
         except Exception:
+            logger.exception("Invalid date format.")
             date = "Invalid Date"
 
         has_attachments = False
@@ -780,6 +882,7 @@ def reply_to_thread(
                 has_attachments = True
                 break
 
+        logger.info("Reply sent successfully.")
         return {
             "details": "Reply sent successfully.",
             "emails": [
@@ -796,6 +899,7 @@ def reply_to_thread(
             ],
         }
     except Exception as e:
+        logger.exception("Error while replying to thread.")
         return {"details": f"Error replying to thread: {str(e)}", "emails": []}
 
 
@@ -833,11 +937,25 @@ def create_draft(
     Returns:
         Dict with details of the operation and list of draft data.
     """
+    logger.info(
+        "Creating draft.",
+        extra={
+            "to": to,
+            "subject": subject,
+            "body": body,
+            "is_html": is_html,
+            "cc": cc,
+        },
+    )
     account = get_user_service().get_account(
         state["user_id"],
         state["account_name"],
     )
     if not account:
+        logger.warning(
+            "Account not found.",
+            extra={"user_id": state["user_id"], "account_name": state["account_name"]},
+        )
         return {
             "details": f"Please authenticate with Google first for account: '{state['account_name']}'.",
             "emails": [],
@@ -875,6 +993,7 @@ def create_draft(
                 else datetime.datetime.now(TIMEZONE).isoformat(timespec="seconds")
             )
         except Exception:
+            logger.exception("Invalid date format.")
             date = "Invalid Date"
 
         has_attachments = any(
@@ -882,6 +1001,7 @@ def create_draft(
             for part in message_data.get("payload", {}).get("parts", [])
         )
 
+        logger.info("Draft created successfully.")
         return {
             "details": "Draft created successfully.",
             "emails": [
@@ -899,6 +1019,7 @@ def create_draft(
             ],
         }
     except Exception as e:
+        logger.exception("Error while creating draft.")
         return {"details": f"Error creating draft: {str(e)}", "emails": []}
 
 
@@ -936,11 +1057,25 @@ def list_drafts(
     Returns:
         Dict with details of the operation and list of draft data.
     """
+    logger.info(
+        "Listing drafts.",
+        extra={
+            "query": query,
+            "has_attachment": has_attachment,
+            "start_date": start_date,
+            "end_date": end_date,
+            "specific_draft_ids": specific_draft_ids,
+        },
+    )
     account = get_user_service().get_account(
         state["user_id"],
         state["account_name"],
     )
     if not account:
+        logger.warning(
+            "Account not found.",
+            extra={"user_id": state["user_id"], "account_name": state["account_name"]},
+        )
         return {
             "details": f"Please authenticate with Google first for account: '{state['account_name']}'.",
             "emails": [],
@@ -966,6 +1101,10 @@ def list_drafts(
                     start_timestamp = int(start_dt.timestamp())
                     search_query += f" after:{start_timestamp}"
                 except ValueError:
+                    logger.warning(
+                        "Invalid start_date format. Must be in YYYY-MM-DD format.",
+                        extra={"start_date": start_date},
+                    )
                     return {
                         "details": "Invalid start_date format. Use YYYY-MM-DD.",
                         "emails": [],
@@ -979,6 +1118,10 @@ def list_drafts(
                     end_timestamp = int(end_dt.timestamp())
                     search_query += f" before:{end_timestamp}"
                 except ValueError:
+                    logger.warning(
+                        "Invalid end_date format. Must be in YYYY-MM-DD format.",
+                        extra={"end_date": end_date},
+                    )
                     return {
                         "details": "Invalid end_date format. Use YYYY-MM-DD.",
                         "emails": [],
@@ -1001,6 +1144,7 @@ def list_drafts(
                     break
             total_count = len(draft_ids)
         if total_count == 0:
+            logger.warning("No drafts found matching the query.")
             return {
                 "details": "No drafts found matching the query.",
                 "emails": [],
@@ -1062,6 +1206,7 @@ def list_drafts(
                         )
                     )
                 except Exception:
+                    logger.exception("Invalid date format.")
                     date = "Invalid Date"
 
                 has_attachments = has_attachments_recursive(
@@ -1090,6 +1235,13 @@ def list_drafts(
         if total_count > MAX_NUM_DISPLAY_ITEMS:
             details += f" Showing first {MAX_NUM_DISPLAY_ITEMS} drafts. Refine your search for more results."
 
+        logger.info(
+            "Drafts listed successfully.",
+            extra={
+                "drafts_number": total_count,
+                "drafts_number_to_show": len(cleaned_drafts),
+            },
+        )
         return {
             "details": details,
             "emails": cleaned_drafts,
@@ -1137,17 +1289,33 @@ def edit_draft(
     Returns:
         Dict with details of the operation and list of updated draft data.
     """
+    logger.info(
+        "Editing draft.",
+        extra={
+            "draft_id": draft_id,
+            "subject": subject,
+            "to": to,
+            "cc": cc,
+            "body": body,
+            "is_html": is_html,
+        },
+    )
     account = get_user_service().get_account(
         state["user_id"],
         state["account_name"],
     )
     if not account:
+        logger.warning(
+            "Account not found.",
+            extra={"user_id": state["user_id"], "account_name": state["account_name"]},
+        )
         return {
             "details": f"Please authenticate with Google first for account: '{state['account_name']}'.",
             "emails": [],
         }
 
     if not any([subject, to, cc, body, is_html]):
+        logger.warning("No updates provided.")
         return {"details": "No updates provided", "emails": []}
 
     gmail_service = build("gmail", "v1", credentials=account.google_credentials)
@@ -1218,12 +1386,24 @@ def edit_draft(
                 else datetime.datetime.now(TIMEZONE).isoformat(timespec="seconds")
             )
         except Exception:
+            logger.exception("Invalid date format.")
             date = "Invalid Date"
 
         has_attachments = has_attachments_recursive(
             message_data.get("payload", {}).get("parts", [])
         )
 
+        logger.info(
+            "Draft updated successfully.",
+            extra={
+                "draft_id": draft_id,
+                "subject": subject,
+                "to": to,
+                "cc": cc,
+                "body": body,
+                "is_html": is_html,
+            },
+        )
         return {
             "details": "Draft updated successfully",
             "emails": [
@@ -1241,6 +1421,7 @@ def edit_draft(
             ],
         }
     except Exception as e:
+        logger.exception("Error while editing draft.")
         return {"details": f"Error editing draft: {str(e)}", "emails": []}
 
 
@@ -1270,8 +1451,16 @@ def delete_draft(
     Returns:
         Dict with details of the operations.
     """
+    logger.info(
+        "Deleting drafts.",
+        extra={"draft_ids": draft_ids},
+    )
     account = get_user_service().get_account(state["user_id"], state["account_name"])
     if not account:
+        logger.warning(
+            "Account not found.",
+            extra={"user_id": state["user_id"], "account_name": state["account_name"]},
+        )
         return {"details": "Authentication required", "emails": []}
 
     gmail_service = build("gmail", "v1", credentials=account.google_credentials)
@@ -1290,6 +1479,7 @@ def delete_draft(
     if errors:
         details += f" Failed to delete {len(errors)} drafts: {', '.join(errors)}"
 
+    logger.info("Drafts deleted successfully.")
     return {"details": details, "emails": []}
 
 
@@ -1319,8 +1509,16 @@ def send_draft(
     Returns:
         Dict with details of the operation and sent message data.
     """
+    logger.info(
+        "Sending draft.",
+        extra={"draft_id": draft_id},
+    )
     account = get_user_service().get_account(state["user_id"], state["account_name"])
     if not account:
+        logger.warning(
+            "Account not found.",
+            extra={"user_id": state["user_id"], "account_name": state["account_name"]},
+        )
         return {
             "details": f"Authentication required for '{state['account_name']}'",
             "emails": [],
@@ -1374,10 +1572,12 @@ def send_draft(
                 else datetime.datetime.now(TIMEZONE).isoformat(timespec="seconds")
             )
         except Exception:
+            logger.exception("Invalid date format.")
             date = "Invalid Date"
 
         has_attachments = has_attachments_recursive(message["payload"].get("parts", []))
 
+        logger.info("Draft sent successfully.")
         return {
             "details": "Draft sent successfully",
             "emails": [
@@ -1400,6 +1600,7 @@ def send_draft(
             ],
         }
     except Exception as e:
+        logger.exception("Error while sending draft.")
         return {"details": f"Sending failed: {str(e)}", "emails": []}
 
 

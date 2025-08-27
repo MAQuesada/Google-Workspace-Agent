@@ -8,7 +8,9 @@ from agents.contacts.tools_google import contacts_toolset as contacts_toolset_go
 from agents.setup import WorkersState, tools_condition_worker
 from prompts.core import get_prompt_builder
 from utils.config import get_config
+from utils.logger import get_logger
 
+logger = get_logger("contacts.worker")
 _ = load_dotenv(find_dotenv())
 
 CONTACTS_WORKER_TEMPLATE = get_prompt_builder("src/prompts/config.yaml").build_prompt(
@@ -33,12 +35,12 @@ def create_contacts_graph(
         StateGraph: A compiled state graph for calendar operations.
     """
     worker_builder = StateGraph(WorkersState)
-
+    logger.info("Creating contacts graph.")
     llm_with_tools = llm.bind_tools(tools)
 
     async def custom_llm_with_contact_tools(state: WorkersState):
         """Generate an AIMessage that may include a tool-call to be sent."""
-
+        logger.info("Calling the contacts worker.")
         if state["workers_messages"][0].type != "system":
             state["workers_messages"].insert(  # type: ignore
                 0,
@@ -62,7 +64,7 @@ def create_contacts_graph(
     # Any time a tool is called, we return to the chatbot to decide the next step
     worker_builder.add_edge("contact_tools", "llm_with_contact_tools")
     worker_builder.add_edge(START, "llm_with_contact_tools")
-
+    logger.info("Contacts graph created.")
     return worker_builder.compile()
 
 

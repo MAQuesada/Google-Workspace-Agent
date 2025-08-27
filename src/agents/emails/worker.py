@@ -10,6 +10,9 @@ from agents.setup import WorkersState, tools_condition_worker
 from agents.emails.tools import google_emails_toolset
 from utils.config import get_config
 from prompts.core import get_prompt_builder
+from utils.logger import get_logger
+
+logger = get_logger("emails.worker")
 
 _ = load_dotenv(find_dotenv())
 
@@ -34,11 +37,13 @@ def create_email_graph(
     Returns:
         StateGraph: A compiled state graph for email operations.
     """
+    logger.info("Creating email graph.")
     worker_builder = StateGraph(WorkersState)
     llm_with_tools = llm.bind_tools(tools)
 
     async def custom_llm_with_email_tools(state: WorkersState):
         """Generate an AIMessage that may include a tool-call to be sent."""
+        logger.info("Calling the email worker.")
         now = datetime.now(get_config().TIMEZONE)
         datetime_iso = now.isoformat(timespec="seconds")
         dayweek = now.strftime("%A")
@@ -68,7 +73,7 @@ def create_email_graph(
     )
     worker_builder.add_edge("email_tools", "llm_with_email_tools")
     worker_builder.add_edge(START, "llm_with_email_tools")
-
+    logger.info("Email graph created successfully.")
     return worker_builder.compile()
 
 

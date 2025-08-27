@@ -11,7 +11,9 @@ from agents.setup import WorkersState, tools_condition_worker
 from prompts.core import get_prompt_builder
 from utils.config import get_config
 from agents.calendar.tool_google import calendar_toolset_google
+from utils.logger import get_logger
 
+logger = get_logger("calendar.worker")
 _ = load_dotenv(find_dotenv())
 
 CALENDAR_WORKER_TEMPLATE = get_prompt_builder("src/prompts/config.yaml").build_prompt(
@@ -35,6 +37,7 @@ def create_calendar_graph(
     Returns:
         StateGraph: A compiled state graph for calendar operations.
     """
+    logger.info("Creating calendar graph.")
     worker_builder = StateGraph(WorkersState)
 
     llm_with_tools = llm.bind_tools(tools)
@@ -42,6 +45,7 @@ def create_calendar_graph(
     async def custom_llm_with_calendar_tools(state: WorkersState):
         """Generate an AIMessage that may include a tool-call to be sent."""
 
+        logger.info("Calling the calendar worker.")
         now = datetime.now(get_config().TIMEZONE)
         # Generate ISO 8601 format with seconds
         datetime_iso = now.isoformat(timespec="seconds")
@@ -71,7 +75,7 @@ def create_calendar_graph(
     # Any time a tool is called, we return to the chatbot to decide the next step
     worker_builder.add_edge("calendar_tools", "llm_with_calendar_tools")
     worker_builder.add_edge(START, "llm_with_calendar_tools")
-
+    logger.info("Calendar graph created.")
     return worker_builder.compile()
 
 
