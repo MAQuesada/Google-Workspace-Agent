@@ -1,39 +1,8 @@
-import json
-import re
 import base64
 import pytest
 
 from agents.emails.worker import google_email_worker
 from conftest import _extract_final_ai_message_content, _extract_json_block
-
-
-# def _extract_json_block(text: str):
-#     """
-#     Extract a JSON code block from a message like:
-
-#     ```json
-#     { ... }
-#     ```
-
-#     If no fenced block is found, try raw JSON parsing.
-#     """
-#     if not isinstance(text, str):
-#         return None
-
-#     m = re.search(r"```json\s*(\{.*?\})\s*```", text, flags=re.S)
-#     if m:
-#         try:
-#             return json.loads(m.group(1))
-#         except Exception:
-#             pass
-
-#     text = text.strip()
-#     if text.startswith("{") and text.endswith("}"):
-#         try:
-#             return json.loads(text)
-#         except Exception:
-#             pass
-#     return None
 
 
 def _mk_msg(id_, subject, frm, to, body_text="Body text", unix_ms="1710000000000"):
@@ -63,6 +32,7 @@ def _mk_msg(id_, subject, frm, to, body_text="Body text", unix_ms="1710000000000
     }
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_email_agent_handles_greeting_without_tools(
     fake_build, fake_user_service, state_ok
@@ -85,6 +55,7 @@ async def test_email_agent_handles_greeting_without_tools(
     assert isinstance(content, str) and len(content) > 0
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_email_agent_sends_email_success(
     fake_build, fake_user_service, state_ok, fake_store
@@ -125,6 +96,7 @@ async def test_email_agent_sends_email_success(
     assert "labels" in email_item and "SENT" in email_item["labels"]
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_email_agent_search_emails_basic(
     fake_build, fake_user_service, state_ok, fake_store
@@ -175,6 +147,7 @@ async def test_email_agent_search_emails_basic(
     assert any("project x" in s for s in subjects)
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_email_agent_reply_to_thread_success(
     fake_build, fake_user_service, state_ok, fake_store

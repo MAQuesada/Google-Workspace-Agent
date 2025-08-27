@@ -39,6 +39,7 @@ def _contains_guidance(text: str) -> bool:
     return any(re.search(p, text.lower()) for p in patterns)
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "case",
@@ -95,6 +96,7 @@ async def test_respond_handles_edge_cases_gracefully(case, mock_user_service):
     )
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_harmful_request_rejection(mock_user_service):
     """Test that AI refuses harmful requests."""

@@ -13,7 +13,9 @@ from langchain_core.tools.base import InjectedToolCallId
 
 from google_service.core import get_user_service
 from utils.config import get_config
+from utils.logger import get_logger
 
+logger = get_logger("contacts.tools")
 CONTACT_FIELDS = "names,emailAddresses,phoneNumbers"
 PAGE_ZISE = 1000  # 1000 is the maximum page size for the Google People API
 MAX_NUM_DISPLAY_ITEMS = get_config().MAX_NUM_DISPLAY_ITEMS
@@ -22,6 +24,7 @@ contacts_toolset = []
 
 def get_all_contacts(service):
     """Retrieve all contacts from the user's Google account."""
+    logger.info("Getting all contacts.")
     all_contacts = []
     next_page_token = None
 
@@ -44,6 +47,7 @@ def get_all_contacts(service):
         next_page_token = response.get("nextPageToken")
         if not next_page_token:
             break
+    logger.info("All contacts retrieved.", extra={"contacts_number": len(all_contacts)})
     return all_contacts
 
 
@@ -54,6 +58,7 @@ def get_other_contacts(service):
         - names
         - emailAddresses
     """
+    logger.info("Getting other contacts.")
     other_contacts = []
     next_page_token = None
 
@@ -72,7 +77,9 @@ def get_other_contacts(service):
         next_page_token = response.get("nextPageToken")
         if not next_page_token:
             break
-
+    logger.info(
+        "Other contacts retrieved.", extra={"contacts_number": len(other_contacts)}
+    )
     return other_contacts
 
 
@@ -87,6 +94,14 @@ def clean_contacts(contacts, fields=[], include_source=True):
     - source: 'My contacts' or 'Other contacts' (optional, based on resourceName)
     - additional fields passed via the 'fields' parameter (if present)
     """
+    logger.info(
+        "Cleaning contacts.",
+        extra={
+            "contacts_number": len(contacts),
+            "fields": fields + ["full_name", "emails", "phones"],
+            "include_source": include_source,
+        },
+    )
     cleaned_contacts = []
 
     for person in contacts:
@@ -134,6 +149,10 @@ def clean_contacts(contacts, fields=[], include_source=True):
             person_dict[field] = person.get(field, f"No {field}")
 
         cleaned_contacts.append(person_dict)
+    logger.info(
+        "Contacts cleaned.",
+        extra={"contacts_number": len(cleaned_contacts)},
+    )
 
     return cleaned_contacts
 
@@ -149,12 +168,19 @@ def remove_keys_from_contacts(contacts: list, keys_to_remove: list) -> list:
     Returns:
         list: A new list of contacts with the specified keys removed.
     """
+    logger.info(
+        "Removing keys from contacts.",
+        extra={"contacts_number": len(contacts), "keys_to_remove": keys_to_remove},
+    )
     cleaned = []
 
     for contact in contacts:
         cleaned_contact = {k: v for k, v in contact.items() if k not in keys_to_remove}
         cleaned.append(cleaned_contact)
 
+    logger.info(
+        "Keys removed from contacts.",
+    )
     return cleaned
 
 
@@ -176,6 +202,15 @@ def find_contact_by_query(
         List of cleaned contact dicts that match the search.
     """
     search_lower = search_name.lower()
+
+    logger.info(
+        "Finding contact by query.",
+        extra={
+            "search_name": search_lower,
+            "search_other_contacts": search_other_contacts,
+            "field_to_keep": field_to_keep,
+        },
+    )
 
     # Fetch and clean my contacts
     my_contacts_raw = get_all_contacts(contact_service)
@@ -210,6 +245,10 @@ def find_contact_by_query(
                     matched_contacts.append(contact)
                     break
 
+    logger.info(
+        "Contact found successfully.",
+        extra={"matched_contacts_number": len(matched_contacts)},
+    )
     return matched_contacts
 
 
@@ -219,12 +258,20 @@ def delete_contact(
     state: Annotated[dict, InjectedState],
     query: str,
 ):
+    logger.info(
+        "Deleting contact.",
+        extra={"query": query},
+    )
     account = get_user_service().get_account(
         state["user_id"],
         state["account_name"],
     )
 
     if not account:
+        logger.warning(
+            "Account not found.",
+            extra={"user_id": state["user_id"], "account_name": state["account_name"]},
+        )
         return {
             "details": f"Please authenticate with Google first in your account: '{state['account_name']}'.",
             "contacts": [],
@@ -239,17 +286,20 @@ def delete_contact(
             field_to_keep=["resourceName"],
         )
     except Exception as e:
+        logger.exception("Error while finding the contact.")
         return {
             "details": f"There was an error finding the contact '{query}': {e}",
             "contacts": [],
         }
 
     if not contacts:
+        logger.warning("No contact found.")
         return {
             "details": f"There are no contacts that match with the query '{query}'.",
             "contacts": [],
         }
     if len(contacts) > 1:
+        logger.warning("Multiple contacts found.")
         return {
             "details": f"Please be more specific with the contact name/email, there are multiple contacts found for the query: '{query}'.",
             "contacts": remove_keys_from_contacts(contacts, ["resourceName"]),
@@ -259,10 +309,12 @@ def delete_contact(
             resourceName=contacts[0]["resourceName"]
         ).execute()
     except Exception as e:
+        logger.exception("Error while deleting the contact.")
         return {
             "details": f"There was an error deleting the contact: {e}",
             "contacts": remove_keys_from_contacts(contacts, ["resourceName"]),
         }
+    logger.info("Contact deleted successfully.")
     return {
         "details": f"Contact '{query}' deleted.",
         "contacts": remove_keys_from_contacts(contacts, ["resourceName"]),
@@ -288,12 +340,25 @@ def create_contact(
     emails: Optional[List[str]] = None,
     phones: Optional[List[str]] = None,
 ):
+    logger.info(
+        "Creating contact.",
+        extra={
+            "given_name": given_name,
+            "family_name": family_name,
+            "emails": emails,
+            "phones": phones,
+        },
+    )
     account = get_user_service().get_account(
         state["user_id"],
         state["account_name"],
     )
 
     if not account:
+        logger.warning(
+            "Account not found.",
+            extra={"user_id": state["user_id"], "account_name": state["account_name"]},
+        )
         return {
             "detail": f"Please authenticate with Google first in your account: '{state['account_name']}'.",
             "contacts": [],
@@ -315,12 +380,14 @@ def create_contact(
                 if contacts:
                     break
     except Exception as e:
+        logger.exception("Error while finding the contact.")
         return {
             "detail": f"There was an error finding the contact '{full_name_to_search}': {e}",
             "contacts": [],
         }
 
     if contacts:
+        logger.warning("Contact already exists.")
         return {
             "detail": f"Contact '{full_name_to_search}' already exists.",
             "contacts": contacts,
@@ -341,11 +408,12 @@ def create_contact(
             contact_service.people().createContact(body=contact_data).execute()
         )
     except Exception as e:
+        logger.exception("Error while creating the contact.")
         return {
             "detail": f"The contact could not be created: {str(e)}",
             "contacts": [],
         }
-
+    logger.info("Contact created successfully.")
     return {
         "detail": f"Contact '{full_name_to_search}' created.",
         "contacts": clean_contacts([new_contact], include_source=False),
@@ -372,7 +440,18 @@ def update_contact(
     new_emails: List[str] = [],
     new_phones: List[str] = [],
 ):
+    logger.info(
+        "Updating contact.",
+        extra={
+            "query": query,
+            "new_given_name": new_given_name,
+            "new_family_name": new_family_name,
+            "new_emails": new_emails,
+            "new_phones": new_phones,
+        },
+    )
     if not new_given_name and not new_family_name and not new_emails and not new_phones:
+        logger.warning("No fields to update.")
         return {
             "details": "Please provide at least one field to update.",
             "contacts": [],
@@ -381,6 +460,10 @@ def update_contact(
     account = get_user_service().get_account(state["user_id"], state["account_name"])
 
     if not account:
+        logger.warning(
+            "Account not found.",
+            extra={"user_id": state["user_id"], "account_name": state["account_name"]},
+        )
         return {
             "details": f"Please authenticate with Google first in your account: '{state['account_name']}'.",
             "contacts": [],
@@ -392,16 +475,19 @@ def update_contact(
             query, contact_service, field_to_keep=["resourceName", "etag"]
         )
     except Exception as e:
+        logger.exception("Error while finding the contact.")
         return {
             "details": f"There was an error finding the contact '{query}': {e}",
             "contacts": [],
         }
     if not contacts:
+        logger.warning("No contact found.")
         return {
             "details": f"No contact found matching '{query}'.",
             "contacts": [],
         }
     if len(contacts) > 1:
+        logger.warning("Multiple contacts found.")
         return {
             "details": f"Multiple contacts found for '{query}'. Please be more specific.",
             "contacts": remove_keys_from_contacts(contacts, ["resourceName", "etag"]),
@@ -450,11 +536,13 @@ def update_contact(
             .execute()
         )
     except Exception as e:
+        logger.exception("Error while updating the contact.")
         return {
             "details": f"There was an error updating the contact: {str(e)}",
             "contacts": [],
         }
 
+    logger.info("Contact updated successfully.")
     return {
         "details": "Contact updated successfully.",
         "contacts": clean_contacts([updated_contact], include_source=False),
@@ -477,12 +565,20 @@ def get_contacts(
     state: Annotated[dict, InjectedState],
     query: str,
 ):
+    logger.info(
+        "Getting contacts.",
+        extra={"query": query},
+    )
     account = get_user_service().get_account(
         state["user_id"],
         state["account_name"],
     )
 
     if not account:
+        logger.warning(
+            "Account not found.",
+            extra={"user_id": state["user_id"], "account_name": state["account_name"]},
+        )
         return {
             "detail": f"Please authenticate with Google first in your account: '{state['account_name']}'.",
             "contacts": [],
@@ -494,18 +590,29 @@ def get_contacts(
             query, contact_service, search_other_contacts=True
         )
     except Exception as e:
+        logger.exception("Error while fetching the contacts.")
         return {"detail": f"Error fetching the contacts: {str(e)}", "contacts": []}
 
     if len(contacts) > MAX_NUM_DISPLAY_ITEMS:
+        logger.warning(
+            "Too many contacts found.",
+            extra={
+                "contacts_number": len(contacts),
+                "query": query,
+                "max_num_display_items": MAX_NUM_DISPLAY_ITEMS,
+            },
+        )
         return {
             "detail": f"There are  {len(contacts)} contacts found matching '{query}'. Showing the first {MAX_NUM_DISPLAY_ITEMS}. Please be more specific.",
             "contacts": contacts[:MAX_NUM_DISPLAY_ITEMS],
         }
     if not contacts:
+        logger.warning("No contacts found.")
         return {
             "detail": f"No contacts found matching '{query}'.",
             "contacts": [],
         }
+    logger.info("Contacts found successfully.")
     return {
         "detail": f"Contacts found that match with the query '{query}'.",
         "contacts": contacts,

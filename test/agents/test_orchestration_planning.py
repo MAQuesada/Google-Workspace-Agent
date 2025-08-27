@@ -4,8 +4,6 @@ from agents.orchestrator.graph import orchestrator_input_node
 TEST_USER_ID = "test_user_123"
 
 
-
-
 def _route_order_from(response):
     """
     Extracts the order of managers from the orchestrator response.
@@ -22,6 +20,7 @@ def _route_order_from(response):
     return order
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "user_input,expected_order,case",
@@ -116,9 +115,7 @@ async def test_planning_route_order(
     assert order == expected_order, f"Case failed: {case}. Got {order}"
 
 
-# --- Additional invariant tests ---
-
-
+@pytest.mark.integration
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "user_input",

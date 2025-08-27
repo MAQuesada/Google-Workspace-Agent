@@ -68,9 +68,12 @@ The system follows a hierarchical structure:
     │   ├── calendar/            # Calendar manager
     │   ├── contacts/            # Contacts manager
     │   └── date/                # Date manager
+    │   └── seach/               # Search manager
     ├── google_service/          # Google API integration
     ├── prompts/                 # System prompts for agents
     └── utils/                   # Utility functions and helpers
+    └── evaluation_notebooks/    # Notebooks for evaluations and safety
+    └── test_notebooks/          # Playground Notebooks
 ```
 
 ***
@@ -329,11 +332,14 @@ poetry run pytest test/agents/
 
 # Run tests with coverage report
 poetry run pytest --cov=src
+
+# Run only integration test
+pytest -m integration
 ```
 
 ### ⚠️ Important Note on Test Costs
 
-**All tests within `test/agents/` utilize the LLM and will incur costs when executed.** These tests make actual API calls to the language model to verify agent behavior and responses.
+**The `integration` tests utilize the LLM and will incur costs when executed.** These tests make actual API calls to the language model to verify agent behavior and responses.
 
 Before running agent tests, ensure you have:
 

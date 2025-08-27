@@ -8,6 +8,9 @@ from pydantic import BaseModel, Field
 import os
 from dotenv import load_dotenv
 from agents.utils import limit_calls
+from utils.logger import get_logger
+
+logger = get_logger("search.tools")
 
 # Load SerpAPI key from .env
 load_dotenv()
@@ -27,7 +30,11 @@ def perform_google_search(
     state: Annotated[dict, InjectedState],
     query: str,
 ) -> dict:
+    logger.info(
+        "Performing Google search.", extra={"query": query, "num_results": NUM_RESULTS}
+    )
     if not SERPAPI_API_KEY:
+        logger.error("SerpAPI key not found.")
         return {
             "answer": "SerpAPI key not found. Please set `serp_api_key` in your .env file.",
             "results": [],
@@ -52,6 +59,7 @@ def perform_google_search(
         clean_text = re.sub(r"<.*?>", "", content)
         output.append({"url": result.get("link", ""), "content": clean_text.strip()})
 
+    logger.info("Google search performed successfully.")
     return {
         "answer": f"Top {NUM_RESULTS} search results for: {query}",
         "results": output,
