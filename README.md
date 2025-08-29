@@ -333,6 +333,9 @@ poetry run pytest test/agents/
 # Run tests with coverage report
 poetry run pytest --cov=src
 
+# Run only the tests that aren't of integration(cost-free LLMs)
+pytest -m "not integration"
+
 # Run only integration test
 pytest -m integration
 ```

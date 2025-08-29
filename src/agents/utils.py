@@ -15,6 +15,11 @@ from langchain_core.messages import ToolMessage
 from functools import wraps
 import os
 
+from utils.config import get_config
+from utils.logger import get_logger
+
+logger = get_logger("agents.utils")
+
 
 class PostgresSaverCustom(PostgresSaver):
     async def aget_tuple(self, config: RunnableConfig) -> Optional[CheckpointTuple]:
@@ -121,10 +126,12 @@ def limit_calls(max_calls=10):
             state = kwargs.get("state")
 
             if state is None:
+                logger.error("'state' must be provided as a keyword argument.")
                 raise ValueError("'state' must be provided as a keyword argument.")
 
             tool_call_id = kwargs.get("tool_call_id")
             if tool_call_id is None:
+                logger.error("'tool_call_id' must be provided as a keyword argument.")
                 raise ValueError(
                     "'tool_call_id' must be provided as a keyword argument."
                 )
@@ -135,6 +142,10 @@ def limit_calls(max_calls=10):
             if len(num_calls) > max_calls or last_k_elements_equal(
                 num_calls, max_calls // 2
             ):
+                logger.debug(
+                    "Reached the maximum number of tool calls.",
+                    extra={"num_calls": num_calls},
+                )
                 output = {
                     "details": (
                         "You cannot call any more tools. Please provide a response to the user "
@@ -146,6 +157,10 @@ def limit_calls(max_calls=10):
                 try:
                     output = func(*args, **kwargs)
                 except Exception as e:
+                    logger.exception(
+                        "Error in tool call.",
+                        extra={"tool_call_id": tool_call_id, "error": str(e)},
+                    )
                     output = {
                         "details": (
                             f"An error occurred in the tool '{func.__name__}'. Error: {str(e)}"
@@ -174,12 +189,13 @@ def create_checkpointer():
     """
     # Check if we're in a test environment
     is_test_env = (
-        os.environ.get("TESTING") == "true"
+        get_config().TESTING == "true"
         or "pytest" in os.environ.get("PYTEST_CURRENT_TEST", "")
         or os.environ.get("PYTEST") == "true"
     )
 
     if is_test_env:
+        logger.info("Using MemorySaver in test environment.")
         return MemorySaver()
     else:
         DB_URI = os.environ.get("POSTGRES_DB_URI")
@@ -204,4 +220,5 @@ def create_checkpointer():
         with pool.connection() as conn:
             checkpointer = PostgresSaverCustom(conn)
             checkpointer.setup()
+            logger.info("Using PostgresSaver in production environment.")
             return checkpointer
