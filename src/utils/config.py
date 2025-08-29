@@ -37,9 +37,11 @@ class Config(BaseSettings):
         "https://mail.google.com/",
     ]
     SERP_API_KEY: str = ""
+    TESTING: str = "false"
     LOG_LEVEL: str = "INFO"
     LOG_TO_FILE: bool = False
     LOG_FILE_PATH: str = ""
+    SECRET_KEY: str = ""
 
     class Config:
         env_file = ".env"

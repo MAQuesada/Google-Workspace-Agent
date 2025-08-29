@@ -275,7 +275,7 @@ async def test_agent_search_limited_results(monkeypatch):
             "workers_messages": [
                 {
                     "type": "human",
-                    "content": "search for limited results",
+                    "content": "search for news about the latest AI agents",
                 }
             ],
         }
