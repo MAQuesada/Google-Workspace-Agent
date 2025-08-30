@@ -1,19 +1,29 @@
-# app/routers/chat.py
-from __future__ import annotations
-
 import json
+import re
 from typing import Any, AsyncGenerator
 
+from anyio import to_thread
 from fastapi import APIRouter, Depends
+from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import BaseModel, Field
 from starlette.responses import StreamingResponse
-from anyio import to_thread
 
 from agents.orchestrator.core import get_agent
 from google_service.core import get_user_service
 from utils.logger import get_logger
 
 logger = get_logger("api.chat_router")
+
+
+def extract_user_request(text: str) -> str:
+    """
+    Extracts the user's request from the given formatted text.
+    """
+    pattern = r"### The user's request is:\n(.*?)\n\n---"
+    match = re.search(pattern, text, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+    return ""
 
 
 UPDATE_MESSAGES = {
@@ -95,6 +105,11 @@ async def event_generator(
             "data": "An error occurred while processing your request. Please try again or if the problem persists, contact support.",
         }
         yield f"data: {json.dumps(response)}\n\n"
+    else:
+        logger.info(
+            "Chat request processed successfully.",
+            extra={"username": username, "conversation_id": conversation_id},
+        )
 
 
 @router.post("", response_class=StreamingResponse)
@@ -112,12 +127,20 @@ async def chat_post(
       "message": "Hello"
     }
     """
+    logger.info(
+        "Chat request received.",
+        extra={"username": body.username, "conversation_id": body.conversation_id},
+    )
+
     # Run sync services in a worker thread to avoid blocking the event loop.
     related_accounts = await to_thread.run_sync(
         get_user_service().list_accounts, body.username
     )
 
     if not related_accounts:
+        logger.info(
+            "No accounts associated with user.", extra={"username": body.username}
+        )
         response = {
             "type": "progress",
             "data": "🚨 You have no accounts associated with your user.",
@@ -139,3 +162,40 @@ async def chat_post(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache"},
     )
+
+
+@router.get("/history")
+async def get_history(
+    username: str,
+    conversation_id: str,
+):
+    logger.info(
+        "Getting history for user.",
+        extra={"username": username, "conversation_id": conversation_id},
+    )
+    related_accounts = await to_thread.run_sync(
+        get_user_service().list_accounts, username
+    )
+
+    if not related_accounts:
+        logger.info("No accounts associated with user.", extra={"username": username})
+        return []
+
+    config = {
+        "configurable": {"thread_id": get_conversation_id(username, conversation_id)}
+    }
+    orchestrator_graph = get_agent()
+    messages = orchestrator_graph.get_state(config).values.get("messages", [])
+    history = []
+    for message in messages:
+        if isinstance(message, HumanMessage):
+            history.append(
+                {"role": "user", "content": extract_user_request(str(message.content))}
+            )
+        elif isinstance(message, AIMessage):
+            history.append({"role": "assistant", "content": message.content})
+    logger.info(
+        "History retrieved successfully.",
+        extra={"username": username, "conversation_id": conversation_id},
+    )
+    return history
