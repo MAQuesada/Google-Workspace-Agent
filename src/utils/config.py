@@ -20,7 +20,7 @@ class Config(BaseSettings):
         "postgresql://postgres:postgres@localhost:5432/"
         "checkpoint_lgraph?sslmode=disable"
     )
-    DB_PATH: str = "data.sb"
+    DB_PATH: str = "data.db"
     TIMEZONE: BaseTzInfo = pytz.timezone("Europe/Paris")
     MAX_NUM_DISPLAY_ITEMS: int = 10
 
