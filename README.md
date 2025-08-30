@@ -24,6 +24,8 @@ User Request → Orchestrator → Specialized Managers → Google Workspace APIs
 | **Database**        | PostgreSQL/SQLite           | Checkpointing & persistence          |
 | **API Integration** | Google API Client           | Google Workspace service access      |
 | **Authentication**  | Google Auth                 | OAuth & credential management        |
+| **Unit-test**       | Pytest                      | Evaluate and test the system components |
+| **API**             | FastAPI                     | Expose the agent to the user         |
 | **Environment**     | Poetry                      | Dependency & virtual env setup       |
 
 ***
@@ -34,6 +36,7 @@ User Request → Orchestrator → Specialized Managers → Google Workspace APIs
 * 📧 **Email Operations**: Send, read, and organize emails
 * 👥 **Contact Management**: Add, update, and search contacts
 * 🗓️ **Date Intelligence**: Smart date handling and scheduling
+* 🔎 **Web Search**: Find relevant information on the web to respond with proper groundness.
 * 🔄 **Multi-account Support**: Route operations to the correct Google account
 * 🧠 **Orchestration**: Central planning and task delegation
 * 📝 **Verification**: Check if there is sufficient context and valid data to proceed with calling the next manager in a multi-step process.
@@ -48,6 +51,7 @@ The system follows a hierarchical structure:
 1. **Orchestrator**: Plans and delegates tasks based on user requests
 2. **Specialized Managers**:
    * **Date Manager**: Handles date-related operations and scheduling
+   * **Search Manager**: Find information in the web
    * **Calendar Manager**: Manages calendar events and availability
    * **Email Manager**: Processes email-related tasks
    * **Contacts Manager**: Manages contact information
@@ -74,6 +78,7 @@ The system follows a hierarchical structure:
     └── utils/                   # Utility functions and helpers
     └── evaluation_notebooks/    # Notebooks for evaluations and safety
     └── test_notebooks/          # Playground Notebooks
+    └── api/                     # Api backend
 ```
 
 ***
@@ -359,5 +364,36 @@ To minimize costs during development, you can:
 Once you have completed the previous steps, you can run the orchestrator.
 
 Run the `test_end_to_end.ipynb` notebook. It will include create an interactive cell for chat.
+
+***
+
+## 🌐 API to Expose the Agent
+
+The project exposes a **FastAPI-based REST API** for interacting with users, managing Google accounts, and running conversations through the orchestrator.
+
+The API is served with:
+
+```bash
+uvicorn src.api.core:factory_app --factory --reload
+```
+
+### 🔐 Authentication
+
+The API security is handled by a `X-API-Key` authentication. Every request must include the header:
+
+```
+X-API-Key: <your_api_key_here>
+```
+
+To generate a valid API key, run:
+
+```bash
+python src/api/depends.py
+```
+
+This script prints a valid key, derived from the environment variable `SECRET_KEY`.
+⚠️ Make sure you set `SECRET_KEY` in your environment before running the script.
+
+For detailed information on all API endpoints, please refer to [API](API.md).
 
 ***
