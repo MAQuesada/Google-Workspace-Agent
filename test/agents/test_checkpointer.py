@@ -63,7 +63,9 @@ def test_orchestrator_graph_uses_memory_saver_in_tests():
     # Ensure we're in test environment
     with patch.dict("os.environ", {"TESTING": "true"}):
         # Import the orchestrator graph
-        from agents.orchestrator.core import orchestrator_graph
+        from agents.orchestrator.core import get_agent
+
+        orchestrator_graph = get_agent()
 
         # The graph should be compiled with a MemorySaver checkpointer
         # We can verify this by checking that the graph exists and is compiled

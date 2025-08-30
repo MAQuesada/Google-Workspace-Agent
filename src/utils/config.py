@@ -20,7 +20,7 @@ class Config(BaseSettings):
         "postgresql://postgres:postgres@localhost:5432/"
         "checkpoint_lgraph?sslmode=disable"
     )
-    DB_PATH: str = "data.sb"
+    DB_PATH: str = "data.db"
     TIMEZONE: BaseTzInfo = pytz.timezone("Europe/Paris")
     MAX_NUM_DISPLAY_ITEMS: int = 10
 
@@ -37,9 +37,11 @@ class Config(BaseSettings):
         "https://mail.google.com/",
     ]
     SERP_API_KEY: str = ""
+    TESTING: str = "false"
     LOG_LEVEL: str = "INFO"
     LOG_TO_FILE: bool = False
     LOG_FILE_PATH: str = ""
+    SECRET_KEY: str = ""
 
     class Config:
         env_file = ".env"

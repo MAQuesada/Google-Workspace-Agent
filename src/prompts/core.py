@@ -1,3 +1,4 @@
+from functools import lru_cache
 from typing import Any, Union
 from langchain_core.prompts import PromptTemplate
 import yaml
@@ -267,6 +268,7 @@ class PromptBuilder:
         return prompt_template
 
 
+@lru_cache(maxsize=1)
 def get_prompt_builder(config_path: str = "config.yaml") -> PromptBuilder:
     """Returns instance of the PromptBuilder class."""
     return PromptBuilder(config_path)

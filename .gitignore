@@ -1,6 +1,7 @@
 # OSX
 #
 .DS_Store
+local
 .env
 *.db
 google_credentials.json

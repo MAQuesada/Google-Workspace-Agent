@@ -113,6 +113,22 @@ class UserService:
 
         return account
 
+    def dissociate_account(self, username: str, account_email: str) -> None:
+        logger.info(
+            "Dissociating account.",
+            extra={"username": username, "account_email": account_email},
+        )
+        user = self.load_user(username)
+        if not user:
+            logger.warning("User not found.", extra={"username": username})
+            return
+        user.accounts = [a for a in user.accounts if a.account_email != account_email]
+        self.save_user(user)
+        logger.info(
+            "Account dissociated successfully.",
+            extra={"username": username, "account_email": account_email},
+        )
+
     def fetch_user_email(self, credentials: Credentials) -> str:
         logger.info("Fetching user email.")
         response = requests.get(

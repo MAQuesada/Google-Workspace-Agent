@@ -12,25 +12,39 @@ from unittest.mock import MagicMock, patch
 
 
 from google_service.core import UserService
-
+from utils.config import get_config
 
 
 @pytest.fixture(autouse=True)
 def setup_test_environment():
     """
-    Automatically set up the test environment for all tests.
-    This ensures that MemorySaver is used instead of PostgresSaverCustom.
+    Set TESTING env var and reset cached config so tests always see TESTING=true.
     """
-    # Set environment variables to indicate we're in a test environment
     os.environ["TESTING"] = "true"
     os.environ["PYTEST"] = "true"
+
+    # invalidate cache before any test
+    from agents.orchestrator.core import get_agent
+    from utils.config import get_config
+
+    get_agent.cache_clear()
+    get_config.cache_clear()
     yield
-    # Clean up after test
+
+    # clean up after test
     if "TESTING" in os.environ:
         del os.environ["TESTING"]
     if "PYTEST" in os.environ:
         del os.environ["PYTEST"]
+    get_config.cache_clear()
+    get_agent.cache_clear()
 
+
+@pytest.fixture
+def orchestrator_graph():
+    from agents.orchestrator.core import get_agent
+
+    return get_agent()
 
 @pytest.fixture()
 def memory_checkpointer():
@@ -39,6 +53,7 @@ def memory_checkpointer():
     This avoids any database connections during testing.
     """
     from langgraph.checkpoint.memory import MemorySaver
+
     return MemorySaver()
 
 

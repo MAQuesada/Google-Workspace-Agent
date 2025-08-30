@@ -1,16 +1,17 @@
 import pytest
 
 
-from agents.orchestrator.core import orchestrator_graph
-
-
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_memory(mock_user_service):
+async def test_memory(mock_user_service, orchestrator_graph):
     """
     The assistant should remember the user's name and use it in the response.
     """
     config = {"configurable": {"thread_id": "testing_orchestration_memory"}}
+    from utils.config import get_config
+
+    cfg = get_config()
+    assert cfg.TESTING == "true"
     response = await orchestrator_graph.ainvoke(
         {
             "user_input": "Hello, My name is Manuel",
@@ -42,7 +43,7 @@ async def test_memory(mock_user_service):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_memory_2(mock_user_service):
+async def test_memory_2(mock_user_service, orchestrator_graph):
     """
     The assistant after 4 messages interaction should forget the user's name.
     """

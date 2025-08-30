@@ -18,17 +18,16 @@ def test_init_with_valid_config(temp_config_file, sample_config):
     assert builder.app_config == sample_config
 
 
-def test_init_fallback_on_yaml_error_prints_and_empties(monkeypatch, capsys):
-    """Single consolidated test for: prints error + app_config={} on load failure."""
+def test_init_fallback_on_yaml_error_prints_and_empties(monkeypatch):
+    """Single consolidated test for: app_config={} on load failure."""
 
     def fake_load_yaml(_):
         raise YamlLoadError("boom")
 
     monkeypatch.setattr(PromptBuilder, "load_yaml", staticmethod(fake_load_yaml))
 
-    _ = PromptBuilder("whatever.yaml")
-    captured = capsys.readouterr()
-    assert "Error loading YAML config:" in captured.out
+    builder = PromptBuilder("whatever.yaml")
+    assert builder.app_config == {}
 
 
 @pytest.mark.parametrize(
