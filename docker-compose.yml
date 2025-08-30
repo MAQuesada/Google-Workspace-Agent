@@ -1,0 +1,36 @@
+services:
+  postgres-lgraph:
+    image: postgres:15
+    container_name: postgres_lgraph
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: checkpoint_lgraph
+    volumes:
+      - ./local/postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d checkpoint_lgraph"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: api-agent
+    restart: unless-stopped
+    depends_on:
+      postgres-lgraph:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      TESTING: "false"
+      DB_PATH: /data/data.db
+      POSTGRES_DB_URI: postgresql://postgres:postgres@postgres-lgraph:5432/checkpoint_lgraph?sslmode=disable
+    volumes:
+      - ./local/sqlite_data:/data
+    ports:
+      - "8000:8000"
+    command: []  # the entrypoint is defined in the Dockerfile

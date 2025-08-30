@@ -1,19 +1,17 @@
 import sqlite3
 import json
-import os
 from dotenv import load_dotenv
 from utils.logger import get_logger
+from utils.config import get_config
 
 load_dotenv()
 
 
 logger = get_logger("google_service.storage")
 
-DB_PATH = os.getenv("DB_PATH", "./storage.db")
-
 
 class KeyValueStore:
-    def __init__(self, db_path=DB_PATH):
+    def __init__(self, db_path=get_config().DB_PATH):
         self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self._init_db()
 
