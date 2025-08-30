@@ -11,6 +11,7 @@ load_dotenv()
 
 def factory_app() -> FastAPI:
     from api.chat_router import router as chat_router
+    from api.user_router import router as user_router
 
     # if the agent can't be built, it will raise an exception
     get_agent()
@@ -34,6 +35,10 @@ def factory_app() -> FastAPI:
 
     app.include_router(
         chat_router,
+        dependencies=[Depends(check_access)],
+    )
+    app.include_router(
+        user_router,
         dependencies=[Depends(check_access)],
     )
     return app
