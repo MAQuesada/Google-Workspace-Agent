@@ -1,40 +1,29 @@
 import gradio as gr
-import os
-from dotenv import load_dotenv
 
-from gradio_ui.user_management import create_user_interface
-from gradio_ui.google_auth import create_auth_interface
-from gradio_ui.chat_interface import create_chat_interface
-from gradio_ui.api_client import APIClient
+from api_client import APIClient
+from user_management import create_user_management_interface
+from google_auth import create_auth_interface
+from chat_interface import create_chat_interface
 
-load_dotenv()
+def main():
+    api_base_url = "http://127.0.0.1:8000"  # Adjust as needed
+    api_key = None  # Insert your API key here if required
+    api_client = APIClient(api_base_url, api_key)
 
-# Initialize the API client with base URL from environment variables (default localhost)
-api_client = APIClient(base_url=os.getenv("API_BASE_URL", "http://localhost:8000"))
-
-def create_app():
-    """Create the main Gradio app with tabs for user, auth, and chat."""
-    with gr.Blocks(title="Google Workspace Agent", theme=gr.themes.Soft()) as app:
+    with gr.Blocks() as demo:
         gr.Markdown("# Google Workspace Agent")
-        gr.Markdown("Manage Google Workspace tasks through natural language")
 
         with gr.Tabs():
-            with gr.Tab("User Management"):
-                create_user_interface(api_client)
+            with gr.TabItem("User Management"):
+                user_mgmt_components = create_user_management_interface(api_client)
 
-            with gr.Tab("Google Authentication"):
-                create_auth_interface(api_client)
+            with gr.TabItem("Google Authentication"):
+                google_auth_components = create_auth_interface(api_client)
 
-            with gr.Tab("Chat"):
-                create_chat_interface(api_client)
+            with gr.TabItem("Chat"):
+                chat_components = create_chat_interface(api_client)
 
-    return app
+    demo.launch()
 
 if __name__ == "__main__":
-    app = create_app()
-    app.launch(
-        server_name="0.0.0.0",
-        server_port=7860,
-        share=False,
-        debug=True
-    )
+    main()

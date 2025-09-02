@@ -1,109 +1,44 @@
 import gradio as gr
-from typing import Tuple
-import logging
+from typing import Tuple, List
 
-logger = logging.getLogger(__name__)
-
-def create_user_interface(api_client):
-    """Create the user management interface."""
-
-    def create_user(username: str) -> Tuple[str, str]:
-        """Handle user creation with validation and API call."""
+def create_user_management_interface(api_client):
+    def create_user_ui(username: str) -> str:
         username = username.strip()
         if not username:
-            return "Please enter a username", ""
+            return "Please enter a username."
+        result = api_client.create_user(username)
+        if result.get("success"):
+            return f"User '{username}' created successfully."
+        else:
+            return f"Error: {result.get('message')}"
 
-        try:
-            result = api_client.create_user(username)
-            if result["success"]:
-                user_data = result["data"]
-                user_id = user_data.get("id", "N/A")
-                return result["message"], f"User ID: {user_id}"
-            else:
-                return f"Error: {result['message']}", ""
-        except Exception as e:
-            logger.error(f"Exception in create_user: {e}")
-            return f"Error: {str(e)}", ""
+    def list_users_ui() -> str:
+        result = api_client.list_users()
+        if result.get("success"):
+            users = result.get("data", [])
+            if not users:
+                return "No users found."
+            return "\n".join(users)
+        else:
+            return f"Error: {result.get('message')}"
 
-    def refresh_user_list() -> str:
-        """Fetch and format the user list from the API."""
-        try:
-            result = api_client.list_users()
-            if result["success"]:
-                users = result["data"]
-                if not users:
-                    return "No users found"
+    with gr.Column():
+        gr.Markdown("## User Management")
 
-                user_list = []
-                for user in users:
-                    if isinstance(user, dict):
-                        username = user.get("username", "Unknown")
-                        user_id = user.get("id", "N/A")
-                        user_list.append(f"• {username} (ID: {user_id})")
-                    else:
-                        user_list.append(f"• {user}")
+        username_input = gr.Textbox(label="New Username", placeholder="Enter username to create")
+        create_button = gr.Button("Create User")
+        create_status = gr.Textbox(label="Status", interactive=False)
 
-                return "\n".join(user_list)
-            else:
-                return f"Error retrieving users: {result['message']}"
-        except Exception as e:
-            logger.error(f"Exception in refresh_user_list: {e}")
-            return f"Error: {str(e)}"
+        list_button = gr.Button("List Users")
+        user_list = gr.Textbox(label="Existing Users", interactive=False, lines=8)
 
-    # UI component layout
-    with gr.Row():
-        with gr.Column(scale=2):
-            gr.Markdown("## Create New User")
-            username_input = gr.Textbox(
-                label="Username",
-                placeholder="Enter unique username",
-                info="Choose a unique identifier for the user"
-            )
-            create_btn = gr.Button("Create User", variant="primary")
-
-            creation_status = gr.Textbox(
-                label="Status",
-                interactive=False,
-                show_label=True
-            )
-            user_id_display = gr.Textbox(
-                label="User Details",
-                interactive=False,
-                show_label=True
-            )
-
-        with gr.Column(scale=2):
-            gr.Markdown("## Existing Users")
-            refresh_btn = gr.Button("Refresh User List", variant="secondary")
-            user_list_display = gr.Textbox(
-                label="Users",
-                lines=10,
-                interactive=False,
-                show_label=True
-            )
-
-    # Event bindings
-    create_btn.click(
-        fn=create_user,
-        inputs=[username_input],
-        outputs=[creation_status, user_id_display]
-    )
-
-    refresh_btn.click(
-        fn=refresh_user_list,
-        outputs=[user_list_display]
-    )
-
-    # Auto-refresh user list on page load
-    user_list_display.load(
-        fn=refresh_user_list,
-        outputs=[user_list_display]
-    )
+        create_button.click(create_user_ui, inputs=username_input, outputs=create_status)
+        list_button.click(list_users_ui, inputs=None, outputs=user_list)
 
     return {
         "username_input": username_input,
-        "create_btn": create_btn,
-        "creation_status": creation_status,
-        "user_id_display": user_id_display,
-        "user_list_display": user_list_display
+        "create_button": create_button,
+        "create_status": create_status,
+        "list_button": list_button,
+        "user_list": user_list,
     }

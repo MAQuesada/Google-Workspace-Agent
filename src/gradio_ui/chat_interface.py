@@ -1,232 +1,75 @@
 import gradio as gr
-from typing import List, Tuple
-import logging
-
-logger = logging.getLogger(__name__)
+import requests
+import threading
+import queue
 
 def create_chat_interface(api_client):
-    """Create the chat interface for interacting with Google Workspace Agent."""
+    chat_history = queue.Queue()
 
-    def send_message(user_id: str, message: str, chat_history: List[List[str]]) -> Tuple[List[List[str]], str, str]:
-        """
-        Send a message to the orchestrator and update chat history.
+    def send_message(username: str, conversation_id: str, message: str):
+        if not username.strip() or not conversation_id.strip():
+            return "Please enter Username and Conversation ID."
 
-        Returns updated chat history, cleared input message, and status message.
-        """
-        user_id = user_id.strip()
-        message = message.strip()
+        url = f"{api_client.base_url}/chat"
+        headers = api_client.session.headers
+        payload = {
+            "username": username,
+            "conversation_id": conversation_id,
+            "message": message
+        }
 
-        if not user_id:
-            error_msg = "Please enter a User ID"
-            chat_history.append(["System", error_msg])
-            return chat_history, "", error_msg
+        # We use a list to accumulate streamed messages
+        messages = []
 
-        if not message:
-            error_msg = "Please enter a message"
-            chat_history.append(["System", error_msg])
-            return chat_history, "", error_msg
+        # SSE streaming using requests (requests does not natively support SSE so polling or a library is better)
+        # For simplicity, we do a blocking request and parse chunks
+        with requests.post(url, headers=headers, json=payload, stream=True) as response:
+            if response.status_code != 200:
+                return f"Error: {response.text}"
 
-        # Add user message to chat history
-        chat_history.append(["You", message])
+            for line in response.iter_lines():
+                if line:
+                    decoded = line.decode('utf-8')
+                    if decoded.startswith("data: "):
+                        data_str = decoded[6:]
+                        try:
+                            data_json = json.loads(data_str)
+                            if data_json.get("type") == "progress":
+                                messages.append(f"[Processing] {data_json.get('data')}")
+                            elif data_json.get("type") == "content":
+                                messages.append(data_json.get("data"))
+                        except Exception:
+                            continue
 
-        try:
-            # Send request to API
-            result = api_client.chat(user_id=user_id, user_request=message)
+        return "\n".join(messages)
 
-            if result["success"]:
-                api_response = result["data"]
-                
-                # Handle typical possible response structures
-                if isinstance(api_response, dict):
-                    if "response" in api_response:
-                        ai_response = api_response["response"]
-                    elif "messages" in api_response and api_response["messages"]:
-                        last_message = api_response["messages"][-1]
-                        ai_response = last_message.get("content", str(last_message))
-                    else:
-                        ai_response = str(api_response)
-                else:
-                    ai_response = str(api_response)
+    def clear_chat():
+        while not chat_history.empty():
+            chat_history.get()
+        return ""
 
-                chat_history.append(["Agent", ai_response])
-                status = "Message sent successfully"
+    with gr.Column():
+        gr.Markdown("## Chat Interface")
 
-            else:
-                error_response = f"API Error: {result['message']}"
-                chat_history.append(["System", error_response])
-                status = error_response
+        username_input = gr.Textbox(label="Username", placeholder="User identifier")
+        conv_id_input = gr.Textbox(label="Conversation ID", placeholder="Conversation ID")
+        message_input = gr.Textbox(label="Message", placeholder="Enter your message")
 
-        except Exception as e:
-            logger.error(f"Error sending message: {e}")
-            error_response = f"Error: {str(e)}"
-            chat_history.append(["System", error_response])
-            status = error_response
+        send_button = gr.Button("Send Message")
+        clear_button = gr.Button("Clear Chat")
 
-        return chat_history, "", status  # Clear message input
+        output_box = gr.Textbox(label="Conversation", lines=15, interactive=False)
 
-    def clear_chat(chat_history: List[List[str]]) -> Tuple[List[List[str]], str]:
-        """Clear the chat history."""
-        return [], "Chat cleared"
-
-    def get_user_info(user_id: str) -> str:
-        """Get user information and linked Google accounts."""
-        user_id = user_id.strip()
-        if not user_id:
-            return "Please enter a User ID"
-
-        try:
-            result = api_client.get_user_accounts(user_id)
-            if result["success"]:
-                accounts = result["data"]
-                if not accounts:
-                    return f"User ID: {user_id}\nGoogle Accounts: None"
-
-                account_info = []
-                for account in accounts:
-                    email = account.get("account_email", "Unknown")
-                    info = account.get("account_info", "N/A")
-                    account_info.append(f"• {email} ({info})")
-
-                accounts_text = "\n".join(account_info)
-                return f"User ID: {user_id}\n\nGoogle Accounts:\n{accounts_text}"
-            else:
-                return f"Error getting user info: {result['message']}"
-
-        except Exception as e:
-            logger.error(f"Error getting user info: {e}")
-            return f"Error: {str(e)}"
-
-    def format_chat_history(chat_history: List[List[str]]) -> str:
-        """Format chat history for display in readable markdown style."""
-        if not chat_history:
-            return "No messages yet. Start a conversation!"
-
-        formatted = []
-        for sender, message in chat_history:
-            if sender == "You":
-                formatted.append(f"**You:** {message}")
-            elif sender == "Agent":
-                formatted.append(f"**Agent:** {message}")
-            elif sender == "System":
-                formatted.append(f"*System:* {message}")
-
-        return "\n\n".join(formatted)
-
-    # UI Components Layout
-    with gr.Row():
-        with gr.Column(scale=2):
-            gr.Markdown("## Chat with Google Workspace Agent")
-
-            user_id_input = gr.Textbox(
-                label="User ID",
-                placeholder="Enter your user ID",
-                info="User must exist and have Google accounts configured"
-            )
-
-            get_info_btn = gr.Button("Get User Info", variant="secondary", size="sm")
-
-            user_info_display = gr.Textbox(
-                label="User Information",
-                lines=4,
-                interactive=False,
-                info="Shows user ID and connected Google accounts"
-            )
-
-            gr.Markdown("---")
-
-            chat_display = gr.Chatbot(
-                label="Conversation",
-                height=400,
-                show_label=True
-            )
-
-            with gr.Row():
-                message_input = gr.Textbox(
-                    label="Message",
-                    placeholder="Type your request here... (e.g., 'Schedule a meeting for tomorrow at 3pm')",
-                    lines=2,
-                    scale=4
-                )
-                send_btn = gr.Button("Send", variant="primary", scale=1)
-
-            with gr.Row():
-                clear_btn = gr.Button("Clear Chat", variant="secondary")
-
-            status_display = gr.Textbox(
-                label="Status",
-                interactive=False,
-                show_label=True
-            )
-
-        with gr.Column(scale=1):
-            gr.Markdown("## Usage Examples")
-
-            examples_md = gr.Markdown("""
-### Email Tasks:
-- "Send an email to [john@example.com](mailto:john@example.com) about the meeting"
-- "Find all emails from last week about project updates"
-- "Draft an email to the team about the deadline"
-
-
-### Calendar Tasks:
-- "Schedule a meeting with Sarah tomorrow at 2pm"
-- "What meetings do I have this week?"
-- "Create a recurring weekly standup meeting"
-- "Find available time slots for next Monday"
-
-
-### Contact Tasks:
-- "Add a new contact: John Smith, john@company.com"
-- "Find contacts from Google Inc"
-- "Update Sarah's phone number to 555-1234"
-
-
-### Search Tasks:
-- "Search for documents about quarterly reports"
-- "Find files modified last month"
-
-
-### Date/Time Tasks:
-- "What's the date next Friday?"
-- "Show me dates for the last 7 days"
-            """)
-
-            tips_md = gr.Markdown("""
-- Be specific about dates, times, and recipients
-- The agent can work across multiple Google accounts
-- Use natural language - no special commands needed  
-- Check that your user has Google accounts configured
-- The agent will ask for clarification if needed
-            """)
-
-    # Event handlers
-    send_btn.click(
-        fn=send_message,
-        inputs=[user_id_input, message_input, chat_display],
-        outputs=[chat_display, message_input, status_display]
-    )
-
-    message_input.submit(
-        fn=send_message,
-        inputs=[user_id_input, message_input, chat_display],
-        outputs=[chat_display, message_input, status_display]
-    )
-
-    clear_btn.click(
-        fn=clear_chat,
-        inputs=[chat_display],
-        outputs=[chat_display, status_display]
-    )
-
-    get_info_btn.click(
-        fn=get_user_info,
-        inputs=[user_id_input],
-        outputs=[user_info_display]
-    )
+        send_button.click(send_message,
+                          inputs=[username_input, conv_id_input, message_input],
+                          outputs=output_box)
+        clear_button.click(clear_chat, outputs=output_box)
 
     return {
-        "user_id_input": user_id_input,
-        "chat_display": chat_display,
+        "username_input": username_input,
+        "conv_id_input": conv_id_input,
         "message_input": message_input,
-        "status_display": status_display
+        "send_button": send_button,
+        "clear_button": clear_button,
+        "output_box": output_box,
     }
