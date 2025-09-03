@@ -269,35 +269,29 @@ GOOGLE_TOKEN_URL=https://oauth2.googleapis.com/token
 
 After you’ve set up the OAuth credentials, follow these steps to associate a Google account with a local user in your system:
 
-### 1. Run the Consent Flow Script
+### 1) Run the consent flow
 
 ```bash
 python src/google_service/consent_flow.py
 ```
 
-This script will:
+The script will:
 
-* Open a browser window where the user logs in to their Google account.
-* Ask the user to authorize the application.
-* Request an authorization code.
-* Exchange the code for a `refresh_token` and use it to:
+* Open a browser and show Google’s consent screen.
+* Start a **local server** (`http://127.0.0.1:<port>/callback`) to capture the authorization code automatically.
+* Use **PKCE (S256)** for security.
+* Exchange the code for an **access\_token** and **refresh\_token**.
+* Fetch the Google account’s **email** via the OIDC `userinfo` endpoint.
+* Save the account to your system with `UserService`, linked to a local username.
 
-  * Fetch the user's Google email address
-  * Store the account under a local username
+### 2) Follow the console prompts
 
-### 2. Follow the Prompts
+You’ll be asked to provide:
 
-You will be asked to:
+* **Username** → local username to link the Google account.
+* **Account info** (optional) → extra details to identify the account.
 
-* Paste the **authorization code** from the browser.
-* Provide a **username** to associate the Google account with.
-* Provide a **account\_info** to associate the Google account with(this information will be used to identify the account).
-
-Once completed, the Google account will be saved and linked to the local user.
-
-### 3. View Associated Accounts
-
-You can use the following code snippet to list accounts for a user:
+At the end, the account is saved, and you can list it later with:
 
 ```python
 from google_service.core import UserService
@@ -359,11 +353,11 @@ To minimize costs during development, you can:
 
 * Run specific test files instead of the full suite
 
-## ▶️ Run the Orchestrator
+***
 
-Once you have completed the previous steps, you can run the orchestrator.
+## ▶️ Run a demo
 
-Run the `test_end_to_end.ipynb` notebook. It will include create an interactive cell for chat.
+Once you have completed the previous steps, you can run the google workspace agent. Run the `test_end_to_end.ipynb` notebook. It will include creating an interactive cell for chat.
 
 ***
 
@@ -395,5 +389,43 @@ This script prints a valid key, derived from the environment variable `SECRET_KE
 ⚠️ Make sure you set `SECRET_KEY` in your environment before running the script.
 
 For detailed information on all API endpoints, please refer to [API](API.md).
+
+***
+
+## 🚢 Deployment
+
+You can run the agent and its dependencies with **Docker**. This setup will start:
+
+* A container running the **FastAPI API**
+* A container running **PostgreSQL** for persistent agent state
+
+### 1) Prepare your `.env` file
+
+Make sure you have a `.env` file in the project root containing all required environment variables (OAuth credentials, database settings, API keys, etc.).
+
+### 2) Build and start containers
+
+Run:
+
+```bash
+docker compose up --build
+```
+
+This will:
+
+* Build the application image
+* Start the API server container
+* Start a PostgreSQL container
+* Automatically set up the database volume for persistence
+
+### 3) Access the API
+
+Once running, the API will be available at:
+
+```
+http://localhost:8000
+```
+
+Make sure to include your `X-API-Key` header (see [API Authentication](#-authentication)) when sending requests.
 
 ***

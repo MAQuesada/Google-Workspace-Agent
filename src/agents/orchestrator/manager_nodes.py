@@ -112,19 +112,19 @@ async def calendar_manage_node(
             },
         )
 
-    google_respose = [
+    google_response = [
         worker for worker in response.workers if worker.name in google_account_list
     ]
     logger.info(
         "Executing calendar workers.",
-        extra={"workers_to_execute": google_respose},
+        extra={"workers_to_execute": [worker.name for worker in google_response]},
     )
     google_results = await execute_workers(
-        state["user_id"], google_respose, google_calendar_worker
+        state["user_id"], google_response, google_calendar_worker
     )
 
     for i, result in enumerate(google_results):
-        worker = google_respose[i]
+        worker = google_response[i]
         supervisors_messages += [
             AIMessage(content=worker.task, name=worker.name),
         ]
@@ -230,19 +230,19 @@ async def contacts_manage_node(
             },
         )
 
-    google_respose = [
+    google_response = [
         worker for worker in response.workers if worker.name in google_account_list
     ]
     logger.info(
         "Executing contacts workers.",
-        extra={"workers_to_execute": google_respose},
+        extra={"workers_to_execute": [worker.name for worker in google_response]},
     )
     google_results = await execute_workers(
-        state["user_id"], google_respose, google_contact_worker
+        state["user_id"], google_response, google_contact_worker
     )
 
     for i, result in enumerate(google_results):
-        worker = google_respose[i]
+        worker = google_response[i]
         supervisors_messages += [
             AIMessage(content=worker.task, name=worker.name),
         ]
@@ -338,7 +338,7 @@ async def email_manage_node(
     ]
     logger.info(
         "Executing email workers.",
-        extra={"workers_to_execute": google_response},
+        extra={"workers_to_execute": [worker.name for worker in google_response]},
     )
     google_results = await execute_workers(
         state["user_id"], google_response, google_email_worker
