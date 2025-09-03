@@ -19,6 +19,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        GUARDRAILS_API_KEY: ${GUARDRAILS_API_KEY}
     container_name: api-agent
     restart: unless-stopped
     depends_on:

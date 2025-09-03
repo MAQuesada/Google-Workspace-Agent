@@ -8,7 +8,7 @@ from pytz import BaseTzInfo
 
 
 class Config(BaseSettings):
-    OPENAI_API_KEY: str = ""
+    OPENAI_API_KEY: str
     MAIN_MODEL: str = "gpt-4o-2024-08-06"
     MINI_MODEL: str = "gpt-4o-mini"
     LANGSMITH_TRACING: bool = True
@@ -36,12 +36,13 @@ class Config(BaseSettings):
         "https://www.googleapis.com/auth/userinfo.email",
         "https://mail.google.com/",
     ]
-    SERP_API_KEY: str = ""
+    SERP_API_KEY: str
     TESTING: str = "false"
     LOG_LEVEL: str = "INFO"
     LOG_TO_FILE: bool = False
     LOG_FILE_PATH: str = ""
-    SECRET_KEY: str = ""
+    SECRET_KEY: str
+    GUARDRAILS_API_KEY: str
 
     class Config:
         env_file = ".env"
