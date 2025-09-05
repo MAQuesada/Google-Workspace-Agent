@@ -2,7 +2,7 @@
 
 A **LangGraph-powered agent** designed to manage and interact with Google Workspace services through natural language. This project orchestrates multiple specialized managers (date, calendar, contacts, email) that route requests to the appropriate Google account APIs based on user needs.
 
-***
+---
 
 ## 🧠 Architecture Overview
 
@@ -12,23 +12,23 @@ User Request → Orchestrator → Specialized Managers → Google Workspace APIs
                     └───── Feedback Synthesizer ─────┘
 ```
 
-***
+---
 
 ## ⚙️ Tech Stack
 
-| Component           | Tool / Service              | Purpose                              |
-|---------------------|-----------------------------|--------------------------------------|
-| **LLM**             | OpenAI                      | Natural language understanding       |
-| **Agent Framework** | LangGraph                   | Agent orchestration & state management |
-| **Model tracking**  | LangSmith                   | Model tracking & debugging           |
-| **Database**        | PostgreSQL/SQLite           | Checkpointing & persistence          |
-| **API Integration** | Google API Client           | Google Workspace service access      |
-| **Authentication**  | Google Auth                 | OAuth & credential management        |
-| **Unit-test**       | Pytest                      | Evaluate and test the system components |
-| **API**             | FastAPI                     | Expose the agent to the user         |
-| **Environment**     | Poetry                      | Dependency & virtual env setup       |
+| Component                 | Tool / Service    | Purpose                                 |
+| ------------------------- | ----------------- | --------------------------------------- |
+| **LLM**             | OpenAI            | Natural language understanding          |
+| **Agent Framework** | LangGraph         | Agent orchestration & state management  |
+| **Model tracking**  | LangSmith         | Model tracking & debugging              |
+| **Database**        | PostgreSQL/SQLite | Checkpointing & persistence             |
+| **API Integration** | Google API Client | Google Workspace service access         |
+| **Authentication**  | Google Auth       | OAuth & credential management           |
+| **Unit-test**       | Pytest            | Evaluate and test the system components |
+| **API**             | FastAPI           | Expose the agent to the user            |
+| **Environment**     | Poetry            | Dependency & virtual env setup          |
 
-***
+---
 
 ## 🚀 Features
 
@@ -42,7 +42,7 @@ User Request → Orchestrator → Specialized Managers → Google Workspace APIs
 * 📝 **Verification**: Check if there is sufficient context and valid data to proceed with calling the next manager in a multi-step process.
 * 💬 **Conversational Interface**: Natural language interaction
 
-***
+---
 
 ## 🏗️ System Architecture
 
@@ -57,7 +57,7 @@ The system follows a hierarchical structure:
    * **Contacts Manager**: Manages contact information
 3. **Google API Integration**: Each manager routes requests to the appropriate Google account
 
-***
+---
 
 ## 📂 Project Structure
 
@@ -81,7 +81,7 @@ The system follows a hierarchical structure:
     └── api/                     # Api backend
 ```
 
-***
+---
 
 ## 🛠  For development
 
@@ -206,7 +206,7 @@ This command sets up the pre-commit hooks that automatically format your code ac
 pre-commit run --all
 ```
 
-***
+---
 
 ## 🔐 Setting Up Google Cloud OAuth App
 
@@ -263,7 +263,7 @@ GOOGLE_CLIENT_SECRET=your_client_secret_here
 GOOGLE_TOKEN_URL=https://oauth2.googleapis.com/token
 ```
 
-***
+---
 
 ## 👤 Linking a Google Account to a User
 
@@ -303,7 +303,7 @@ for acc in accounts:
     print(f"Email: {acc.account_email} - Expires: {acc.credentials.expiry}")
 ```
 
-***
+---
 
 ## 🧪 Testing
 
@@ -353,13 +353,13 @@ To minimize costs during development, you can:
 
 * Run specific test files instead of the full suite
 
-***
+---
 
 ## ▶️ Run a demo
 
 Once you have completed the previous steps, you can run the google workspace agent. Run the `test_end_to_end.ipynb` notebook. It will include creating an interactive cell for chat.
 
-***
+---
 
 ## 🌐 API to Expose the Agent
 
@@ -390,7 +390,7 @@ This script prints a valid key, derived from the environment variable `SECRET_KE
 
 For detailed information on all API endpoints, please refer to [API](API.md).
 
-***
+---
 
 ## 🚢 Deployment
 
@@ -428,4 +428,23 @@ http://localhost:8000
 
 Make sure to include your `X-API-Key` header (see [API Authentication](#-authentication)) when sending requests.
 
-***
+## Streamlit-enabled UI
+
+### 1) Login using API key and username
+
+Enter the provided API key and the username to access the API backend via the UI
+
+### 2) Associate Google cloud email
+
+Click on associate google email button to associate the email stored as credential on the google cloud console. Make sure to include the google credentials in the .env file to efficiently link the email with the username.
+
+### 3) Chat with the agent
+
+Click on Chat button to begin chatting and assigning tasks related to Google Workspace in the form of natural language. User can also access chat history.
+
+### 4) Dissociate Google cloud email
+
+To dissociate an email from the username, click on dissociate email account.
+
+
+---
