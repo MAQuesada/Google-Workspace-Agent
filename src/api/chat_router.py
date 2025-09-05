@@ -12,7 +12,7 @@ from agents.orchestrator.core import get_agent
 from google_service.core import get_user_service
 from utils.logger import get_logger
 
-from api.validations import validate_user_input
+# from api.validations import validate_user_input
 
 logger = get_logger("api.chat_router")
 
@@ -152,21 +152,21 @@ async def chat_post(
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache"},
         )
-    validation_result = validate_user_input(body.message)
-    if not validation_result.safe:
-        logger.warning(
-            "User input validation failed.",
-            extra={"validation_failed": validation_result.error_message},
-        )
-        response = {
-            "type": "error",
-            "data": validation_result.error_message,
-        }
-        return StreamingResponse(
-            f"data: {json.dumps(response)}\n\n",
-            media_type="text/event-stream",
-            headers={"Cache-Control": "no-cache"},
-        )
+    # validation_result = validate_user_input(body.message)
+    # if not validation_result.safe:
+    #     logger.warning(
+    #         "User input validation failed.",
+    #         extra={"validation_failed": validation_result.error_message},
+    #     )
+    #     response = {
+    #         "type": "error",
+    #         "data": validation_result.error_message,
+    #     }
+    #     return StreamingResponse(
+    #         f"data: {json.dumps(response)}\n\n",
+    #         media_type="text/event-stream",
+    #         headers={"Cache-Control": "no-cache"},
+    #     )
     gen = event_generator(
         message=body.message,
         username=body.username,

@@ -270,3 +270,5 @@ cython_debug/
 qdrant_storage/
 qdrant_data
 langgraph_repo/
+
+Api key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJETVMiLCJleHAiOjE4MTc1NzE3NDJ9.sFQz38ag_iMh7wyWDY6gSTfgQH1MIp0SRgqHvPF-SIw
