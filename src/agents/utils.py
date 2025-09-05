@@ -1,19 +1,23 @@
+from collections.abc import AsyncIterator, Sequence
+from functools import wraps
+import os
+import random
+import time
 from typing import Any, Dict, Optional
-from langgraph.checkpoint.postgres import PostgresSaver
-from langgraph.checkpoint.memory import MemorySaver
+
+from langchain_core.messages import ToolMessage
 from langchain_core.runnables import RunnableConfig
-from psycopg_pool import ConnectionPool
 from langgraph.checkpoint.base import (
     ChannelVersions,
     Checkpoint,
     CheckpointMetadata,
     CheckpointTuple,
 )
-from collections.abc import AsyncIterator, Sequence
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.postgres import PostgresSaver
+
 from langgraph.types import Command
-from langchain_core.messages import ToolMessage
-from functools import wraps
-import os
+from psycopg_pool import ConnectionPool
 
 from utils.config import get_config
 from utils.logger import get_logger
@@ -100,24 +104,31 @@ def last_k_elements_equal(lst, k):
     return len(lst) >= k and all(x == lst[-1] for x in lst[-k:])
 
 
-def limit_calls(max_calls=10):
+def limit_calls(
+    max_calls=10,
+    *,
+    retries=3,
+    backoff_base=0.5,
+    backoff_max=8.0,
+    jitter_ratio=0.1,
+    retry_exceptions=(Exception,),
+    retry_if=None,
+):
     """
-    Decorator to limit the number of times a tool function can be called,
-    based on the `num_calls` counter inside the `state` dictionary.
+    Decorator that limits the number of calls to a tool function,
+    and adds retries with exponential backoff (and jitter).
 
     The `state` argument must be passed as a keyword argument and is expected
     to be injected (e.g., via a dependency like InjectedState).
 
-    If the number of calls exceeds `max_calls`, the function is not executed
-    and a fallback response is returned.
-
-    Additionally, `num_calls` is incremented automatically after each successful call.
-
     Args:
-        max_calls (int): Maximum number of allowed calls. Default is 10.
-
-    Returns:
-        dict: Either the function's original return value, or a fallback response if the limit is exceeded.
+        max_calls (int): Maximum allowed tool calls.
+        retries (int): Number of retries on failure (besides the first attempt).
+        backoff_base (float): Initial backoff delay in seconds.
+        backoff_max (float): Maximum backoff delay in seconds.
+        jitter_ratio (float): Jitter ratio to randomize delay (0-1).
+        retry_exceptions (tuple[Exception]): Which exceptions should trigger retries.
+        retry_if (callable): Optional filter: (exc, attempt, kwargs) -> bool.
     """
 
     def decorator(func):
@@ -137,8 +148,7 @@ def limit_calls(max_calls=10):
                 )
 
             num_calls = state.get("num_calls", [])
-            # we cannot use more tool if we have already used the max_calls or
-            # the last tool calls are the same
+            # stop if max_calls exceeded or last_k_elements_equal triggered
             if len(num_calls) > max_calls or last_k_elements_equal(
                 num_calls, max_calls // 2
             ):
@@ -153,13 +163,81 @@ def limit_calls(max_calls=10):
                     ),
                     "events": [],
                 }
-            else:
+                return Command(
+                    update={
+                        "num_calls": [str(func.__name__)],
+                        "workers_messages": [
+                            ToolMessage(output, tool_call_id=tool_call_id)
+                        ],
+                    }
+                )
+
+            attempts = 0
+            while attempts <= retries:
                 try:
                     output = func(*args, **kwargs)
+                    # success: exit retry loop
+                    break
+                except retry_exceptions as e:
+                    # check retry filter
+                    should_retry = True
+                    if callable(retry_if):
+                        try:
+                            should_retry = bool(retry_if(e, attempts, kwargs))
+                        except Exception as filter_err:
+                            logger.exception(
+                                "retry_if callable raised an error; aborting retries.",
+                                extra={
+                                    "tool_called": str(func.__name__),
+                                    "error": str(filter_err),
+                                    "original_error": str(e),
+                                },
+                            )
+                            should_retry = False
+
+                    attempts += 1
+
+                    if not should_retry or attempts > retries:
+                        # no more retries
+                        logger.exception(
+                            "Error in tool call (no more retries).",
+                            extra={
+                                "tool_called": str(func.__name__),
+                                "error": str(e),
+                                "attempts": attempts,
+                            },
+                        )
+                        output = {
+                            "details": (
+                                f"An error occurred in the tool '{func.__name__}'. "
+                                f"Error: {str(e)}"
+                            ),
+                            "events": [],
+                        }
+                        break
+
+                    # compute backoff with jitter
+                    delay = min(backoff_base * (2 ** (attempts - 1)), backoff_max)
+                    if jitter_ratio:
+                        jitter = delay * jitter_ratio
+                        delay = max(0.0, delay + random.uniform(-jitter, jitter))
+
+                    logger.warning(
+                        "Tool call failed; retrying with exponential backoff.",
+                        extra={
+                            "tool_called": str(func.__name__),
+                            "error": str(e),
+                            "attempt": attempts,
+                            "next_delay_seconds": round(delay, 3),
+                        },
+                    )
+                    time.sleep(delay)
+
                 except Exception as e:
+                    # non-retryable error
                     logger.exception(
-                        "Error in tool call.",
-                        extra={"tool_call_id": tool_call_id, "error": str(e)},
+                        "Error in tool call (non-retryable).",
+                        extra={"tool_called": str(func.__name__), "error": str(e)},
                     )
                     output = {
                         "details": (
@@ -167,8 +245,11 @@ def limit_calls(max_calls=10):
                         ),
                         "events": [],
                     }
+                    break
+
             return Command(
                 update={
+                    # NOTE: retries do NOT increment num_calls
                     "num_calls": [str(func.__name__)],
                     "workers_messages": [
                         ToolMessage(output, tool_call_id=tool_call_id)
