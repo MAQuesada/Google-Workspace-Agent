@@ -1,10 +1,10 @@
 # Google Workspace Agent: From Prototype to Real-World Readiness 🚀
 
-Agentic AI systems prove their value only when they can run reliably outside of the lab. A prototype demonstrates potential, but production use demands **robustness, safety, usability, and resilience**. It’s the difference between “showing what’s possible” and “making it dependable every day.”
+Agentic AI systems only prove their value when they can run reliably outside the lab. A prototype demonstrates potential, but production use demands **robustness, safety, usability, and resilience**. It’s the difference between “showing what’s possible” and “making it dependable every day.”
 
 Our **Google Workspace Agent** began as a prototype that connected Gmail, Calendar, and Contacts through natural language requests using **LangGraph’s orchestration**. This update goes beyond that foundation, focusing on how we hardened the system with **testing, security guardrails, logging, a secure API, an interactive UI, resilience features, and Docker deployment**, bringing it closer to real-world readiness.
 
-![alt](cover%20.png)
+![cover.png](cover.png)
 
 ***
 
@@ -14,7 +14,7 @@ In the previos article: [ Google Workspace Agent: Your AI Assistant for Seamless
 
 The architecture relied on a **multi-agent system powered by LangGraph**, where the **Orchestrator** planned tasks and delegated them to specialized **Managers** (for calendar, email, contacts, and date resolution). These managers acted as intelligent routers, while lightweight **ReAct workers** executed domain-specific actions. Together, they enabled features like **multi-step automation**, **context awareness**, **memory across conversations**, and **multi-account support**.
 
-That first publication concluded with a **hands-on demo**: running the Orchestrator from a Jupyter notebook to create events, draft emails, and retrieve contacts—showing the agent in action as a working prototype. This new update builds on that foundation, shifting the focus toward production readiness and real-world deployment.
+That first publication concluded with a **hands on demo**: running the Orchestrator from a Jupyter notebook to create events, draft emails, and retrieve contacts, showing the agent in action as a working prototype. This new update builds on that foundation, shifting the focus toward production readiness and real-world deployment.
 
 ***
 
@@ -24,9 +24,9 @@ Since releasing the prototype, we focused on turning the Google Workspace Agent 
 
 One of the most important updates is the **Search Manager**, which was straightforward to integrate thanks to the modular architecture we designed from the start. This new component brings grounding to user questions that involve general knowledge, reducing the chances of hallucinations and improving the agent’s ability to provide meaningful, well-informed answers.
 
-Beyond that, we introduced **comprehensive logging** across entry and exit points, checkpoints, and error traces to give full visibility into agent behavior. We also built a **secure API layer with FastAPI and API Key authentication**, exposing endpoints for chat, history, and account management. The `/chat` endpoint now leverages **Server-Sent Events (SSE)** to stream reasoning steps in real time, letting users literally “see the agent think.”
+Beyond that, we introduced **comprehensive logging** across entry and exit points, checkpoints, and error traces to give full visibility into agent behavior. We also built a **secure API layer with FastAPI and API Key authentication**, exposing endt, history, and account management. The `/chat` endpoint now leverages **Server-Sent Events (SSE)** to stream reasoning steps in real time, letting users literally “see the agent think.”
 
-On the testing side, we expanded coverage with **pytest**, adding unit and integration tests that validate tools, input handling, Google API calls, and API endpoints. To enhance safety, we integrated **guardrails-ai**, filtering inputs before they reach the orchestrator to prevent prompt injection or policy violations.
+On the testing side, we expanded coverage with **pytest**, adding unit and integration tests that validate tools, input handling, Google API calls, and API endpoints. To enhance safety, we integrated **guardrails-ai**, filtering inputs before they reach the Orchestrator to prevent prompt injection or policy violations.
 
 Finally, we created a **Streamlit interface** on top of the API to provide a simple but effective chat panel, and we **containerized the system with Docker** to ensure consistent deployment across environments.
 
@@ -36,11 +36,11 @@ In the sections that follow, we’ll explore these new components in more depth,
 
 ## Toolset 🛠️
 
-To bring the Google Workspace Agent closer to real-world readiness, we built the system on a carefully chosen stack of technologies. Each component plays a distinct role—reasoning, orchestration, persistence, or interface—while keeping the architecture modular and maintainable. This separation of concerns allows us to extend functionality, integrate new managers, and scale with minimal friction.
+To bring the Google Workspace Agent closer to real-world readiness, we built the system on a carefully chosen stack of technologies. Each component plays a distinct role in reasoning, orchestration, persistence, or interface, while keeping the architecture modular and maintainable. This separation of concerns allows us to extend functionality, integrate new managers, and scale with minimal friction.
 
 ### ⚙️ Tech Stack
 
-| Component           | Tool / Service                                                             | Purpose                                                                                                   x                               |
+| Component           | Tool / Service                                                             | Purpose                                                                                                                                   |
 | ------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | **LLM Provider**             | [OpenAI](https://openai.com/)                                              | The **core brain of the system**, handling natural language understanding, reasoning, and step-by-step planning with consistent outputs. |
 | **Agentic Framework** | [LangGraph](https://www.langchain.com/langgraph)                           | Provides a **graph-based orchestration layer** for managing multi-agent workflows, state propagation, and complex execution plans.       |
@@ -58,7 +58,7 @@ To bring the Google Workspace Agent closer to real-world readiness, we built the
 
 ## Logging & Traceability 📜
 
-The very first step toward making our system production-ready was to ensure **visibility into what is happening at every moment inside the system**. This is not about monitoring the LLM itself, but about tracking the flow of execution across our own components—so that we always know what the system is doing, where it might fail, and how it behaves under different conditions. Logging, in this sense, is the backbone of reliability, debugging, and operational trust.
+The first step toward making our system production-ready was to ensure visibility into what is happening at every moment inside the system. This is not about monitoring the LLM itself, but about tracking the flow of execution across our own components, so that we always know what the system is doing, where it might fail, and how it behaves under different conditions. Logging, in this sense, is the backbone of reliability, debugging, and operational trust.
 
 To achieve this, we built a **centralized logging component** implemented as a **singleton**, ensuring consistent behavior throughout the codebase. Each log entry is tagged with the module name, which allows us to immediately identify the origin of any event. This logger is systematically used across all modules, classes, and functions.
 
@@ -103,7 +103,7 @@ These tests provided confidence that the system could adaptively reason, route t
 
 ### Human-in-the-Loop Evaluation
 
-Some behaviors are too nuanced to validate purely with automated tests. For this reason, we included **human judge evaluations** using Jupyter notebooks in `src/evaluation_notebooks`. These notebooks simulate a wide variety of user scenarios and allow human reviewers to assess the quality of system responses.
+Some behaviors are too nuanced to be validated reliably with automated tests. For this reason, we included **human judge evaluations** using Jupyter notebooks in `src/evaluation_notebooks`. These notebooks simulate a wide variety of user scenarios and allow human reviewers to assess the quality of system responses.
 
 * **Complex Multi-Manager Flows**: Assessed correctness in scenarios where multiple managers must work together, such as combining calendar availability with contact retrieval and email drafting.
 * **Ambiguity Handling**: Validated the Verifier step when disambiguating contacts, clarifying vague instructions, or resolving incomplete information.
@@ -131,7 +131,7 @@ If a request is rejected under one of these rules, it is **never recorded in the
 
 Importantly, our system does not risk exposing sensitive information such as **Google credentials, API keys, or environment secrets**. The agent simply does not have access to such data, which removes a major vector of concern when thinking about data leakage.
 
-When interacting with **external sources** (e.g., Google Contacts, Gmail, Calendar, or web search), we avoid leaving extraction decisions to the LLM. Each manager enforces **fixed limits**—for instance, a set maximum number of contacts, events, or emails retrieved. For emails specifically, we also **clean responses** to strip away signatures, headers, or unnecessary metadata, ensuring only essential content enters the LLM’s context window.
+When interacting with **external sources** (e.g., Google Contacts, Gmail, Calendar, or web search), we avoid leaving extraction decisions to the LLM. Each manager enforces **fixed limits**, for instance, a set maximum number of contacts, events, or emails retrieved. For emails specifically, we also **clean responses** to strip away signatures, headers, or unnecessary metadata, ensuring only essential content enters the LLM’s context window.
 
 As noted in the testing section, we included **unit tests** covering toxic, malformed, or adversarial prompts. These tests confirm that the agent consistently produces **polite, professional, and safe responses**, even when faced with hostile or nonsensical input.
 
@@ -141,7 +141,7 @@ Finally, because this system is designed to be used as a **personal assistant in
 
 ## Observability & Resilience ⚙️
 
-In traditional systems, logs are often enough to trace what went wrong: you have a record of inputs, outputs, and error stacks. But in **agentic systems**, this level of visibility is no longer sufficient. It’s not just about knowing *that* a request failed — we need to understand *how* the agent reasoned step by step, what prompts were generated, which tools were invoked, how the state evolved, and where things started to drift off course.
+In traditional systems, logs are often enough to trace what went wrong: you have a record of inputs, outputs, and error stacks. But in **agentic systems**, this level of visibility is no longer sufficient. It’s not just about knowing *that* a request failed, we need to understand *how* the agent reasoned step by step, what prompts were generated, which tools were invoked, how the state evolved, and where things started to drift off course.
 
 For this reason, we integrated **LangSmith**, which offers a seamless fit with the **LangGraph** and **LangChain** ecosystem. Beyond its tight integration, LangSmith provides a **web-based interface** that makes the inner workings of the agent transparent:
 
@@ -166,17 +166,17 @@ Observability alone is not enough. Our system orchestrates **a large number of t
 
 * **Graceful Degradation**: when retries are exhausted or limits are hit, the system responds with **clear fallback messages** instead of breaking the entire flow. The agent continues operating with reduced functionality rather than failing completely.
 
-* **Structured Logging**: every tool call is logged with context: errors, warnings, retries, and parameters. This structured trail not only supports observability but also powers smarter decisions about when to stop, escalate, or adapt behavior.
+* **Structured Logging**: every tool call is logged with context, including errors, warnings, retries, and parameters. This structured trail supports observability and enables more intelligent decisions about when to stop, escalate, or adapt behavior.
 
-By combining **deep observability** (via LangSmith) with **layered resilience** in tool orchestration, the agent becomes both **transparent and fault-tolerant**. It can handle real-world variability without collapsing under unexpected conditions, while giving developers the visibility needed to continuously improve its reliability.
+By combining **deep observability** (via LangSmith) with **layered resilience** in tool orchestration, the agent becomes both **transparent and fault-tolerant**. It can handle real-world variability without collapsing under unexpected conditions, giving developers the necessary visibility to improve its reliability continuously.
 
 ***
 
 ## API Layer 🔑
 
-One of the most important steps in moving from prototype to production was exposing the system through a **dedicated API**. This makes the agent accessible not only to developers but also to applications, user interfaces, and third-party integrations. An API transforms the agent from an isolated prototype into a service that can be consumed securely and consistently in different contexts.
+One of the most important steps in moving from prototype to production was exposing the system through a **dedicated API**. This makes the agent accessible not only to developers and applications, but also to user interfaces and third-party integrations. An API transforms the agent from an isolated prototype into a service that can be consumed securely and consistently in different contexts.
 
-We chose **FastAPI** as the backbone for this layer because it strikes the right balance between **lightweight performance** and **enterprise-grade capabilities**. It is modern, efficient, and asynchronous by design—making it well suited for handling multiple user requests in parallel. At the same time, it comes with built-in support for dependency injection, validation, and documentation, which allows us to maintain a clear and reliable contract between the backend and any clients that consume the service. In practice, this means we can evolve and extend the system without breaking existing integrations.
+We chose **FastAPI** as the backbone for this layer because it strikes the right balance between **lightweight performance** and **enterprise-grade capabilities**. It is modern, efficient, and asynchronous by design, making it well suited for handling multiple user requests in parallel. At the same time, it comes with built-in support for dependency injection, validation, and documentation, which allows us to maintain a clear and reliable contract between the backend and any clients that consume the service. In practice, this means we can evolve and extend the system without breaking existing integrations.
 
 The API exposes several endpoints, each designed to cover a specific aspect of the user’s interaction with the agent:
 
@@ -188,9 +188,9 @@ The API exposes several endpoints, each designed to cover a specific aspect of t
 
 * **Chat Endpoint** (`/chat`): The heart of the API, enabling live conversations with the agent.
 
-A key feature of the chat endpoint is its use of **SSE**. Instead of working like a traditional system—where a user sends a request and waits silently until the final response arrives—the SSE implementation streams updates in real time. The user sees **progress events** as the agent analyzes the request, calls external tools, and synthesizes an answer, followed by **content events** that gradually build the assistant’s reply. If an error occurs, it is streamed back immediately. This design delivers a far more engaging and transparent user experience, since people can follow the agent’s reasoning step by step rather than waiting in the dark.
+A key feature of the chat endpoint is its use of **SSE**. Instead of working like a traditional system, where a user sends a request and waits silently until the final response arrives, the SSE implementation streams updates in real time. The user sees **progress events** as the agent analyzes the request, calls external tools, and synthesizes an answer, followed by **content events** that gradually build the assistant’s reply. If an error occurs, it is streamed back immediately. This design delivers a far more engaging and transparent user experience, since people can follow the agent’s reasoning step by step rather than waiting in the dark.
 
-From the backend perspective, SSE also represents a major improvement. It prevents the API from being a simple “input → output” black box by exposing the **internal state transitions** of the orchestrator in a structured way. This not only improves usability but also makes debugging and monitoring significantly easier.
+From the backend perspective, SSE also represents a major improvement. It prevents the API from being a simple “input → output” black box by exposing the **internal state transitions** of the Orchestrator in a structured way. This not only improves usability but also makes debugging and monitoring significantly easier.
 
 Security is enforced through **API Key** authentication, where keys are generated exclusively by system administrators. This ensures that only authorized clients can access the API, preventing unauthorized individuals from reaching the system.
 
@@ -200,13 +200,42 @@ By providing this API layer, the Google Workspace Agent evolves from an experime
 
 ## User Interface 💻
 
-* **Streamlit App** that consumes the API: justify the use of this framework
+Just as the API layer transforms the agent into a production-ready service, the **user interface** makes it accessible and enjoyable to use. A system that remains purely backend, even if robust, would feel incomplete without a simple and intuitive way for people to interact with it. The UI is where the power of the agent becomes tangible: users can communicate in natural language, switch contexts, and see the agent’s reasoning unfold in real time.
 
-  * Chat panel with live SSE stream (“agent thoughts” & steps).
-  * Account selector (work/personal) and context hints.
-  * Clear error messages and inline guidance when the Verifier requests disambiguation.
-* **UX Goals**: abstract technical complexity, make retries/clarifications effortless.
-* *Add screenshots/GIFs*: simple, medium, and complex flows.
+We chose **Streamlit** as the framework for building this interface. Streamlit aligns perfectly with our goals: it is lightweight, fast to develop with, and optimized for interactive applications. Unlike heavier web frameworks, Streamlit lets us focus on user experience rather than low-level UI plumbing. Its reactive design and Python-native workflows make it a natural fit for prototyping and production alike, allowing us to bridge the gap between **complex backend orchestration** and **human-centered usability**.
+
+The interface provides several key features designed to abstract technical complexity while enhancing usability:
+
+* **Chat Panel with Live SSE Streaming**: at the interface's core a real-time chat panel powered by **SSE**. Instead of waiting for a static response, users see the agent’s **“thoughts” and reasoning steps** streamed progressively. This gives visibility into how the agent is processing requests and makes interactions feel dynamic, transparent, and engaging.
+
+* **Guided Error Handling**: when the agent needs clarification, such as when the **Verifier** detects ambiguity, the UI surfaces inline guidance and clear error messages. Instead of cryptic backend errors, users are offered actionable next steps, making retries or clarifications effortless.
+
+* **Abstracted Technical Complexity**: the design principle behind the interface is to **hide complexity without losing transparency**. Users do not need to worry about API keys, tokens, or orchestration logic; the UI handles these in the background, while still making visible the reasoning process that matters for trust and usability.
+
+Together, these features turn the Streamlit app into more than just a demo client: it is a **practical, human-friendly interface** that lowers barriers to adoption and encourages exploration of the agent’s capabilities.
+
+### Using the Streamlit App
+
+Interacting with the agent through the Streamlit app follows a natural, guided flow:
+
+1. **Login with API Key**: users begin by logging into the application with their username and API key. This establishes a secure connection with the backend services and ensures that only authorized individuals can access the system. To obtain a valid API key, users must **contact the system administrators**, who are responsible for generating and distributing credentials. Additionally, while the Google Cloud project remains unverified, only **pre-registered accounts** explicitly added through the Google Cloud Console are allowed to log in. This safeguard ensures that access stays restricted to approved users during the early stages of deployment.
+
+2. **Associate a Google Account**: once logged in, the next step is to link a Google account. The application uses OAuth credentials stored securely in environment variables, allowing the backend to refresh tokens automatically. Associating an account is required before starting a conversation, ensuring that all interactions are tied to the correct identity and context.
+
+3. **Chat Operations**
+   With an account linked, users can access the core functionality of the agent through the chat panel. From here, they can schedule meetings, manage contacts, retrieve conversation history, or perform searches, all through natural language.
+
+4. **Dissociate an Account**
+   If a user no longer wishes to keep an account linked, they can easily dissociate it. This provides flexibility and ensures that switching between personal and work contexts remains seamless.
+
+5. **Access Chat History**
+   Every interaction is stored and can be revisited through the chat history panel. Each session has a unique identifier, making it simple to retrieve and continue past conversations whenever needed.
+
+### Demo
+
+For a quick demonstration of the interface in action, check out the screen recording [here](https://github.com/MAQuesada/Google-Workspace-Agent/blob/publication/publication/screen-record.mp4).
+
+***
 
 ## Deployment with Docker 🐳
 
@@ -214,7 +243,7 @@ Deployment is the final and most crucial step to take our agent from prototype t
 
 ### System Requirements
 
-One of the key advantages of our design is that the agent has **minimal hardware requirements**. The heavy lifting, language model inference and external tool execution is delegated to APIs. This means that running the system locally or in the cloud does not require GPUs or large-scale infrastructure. The only dependencies are:
+One of the key advantages of our design is that the agent has **minimal hardware requirements**. The heavy lifting, language model inference, and external tool execution are delegated to APIs. This means that running the system locally or in the cloud does not require GPUs or large-scale infrastructure. The only dependencies are:
 
 * **Python libraries**: installed automatically inside the Docker containers.
 * **PostgreSQL**: used to store checkpoints and maintain agent memory across users and sessions (also managed by Docker).
@@ -227,10 +256,10 @@ With this setup, any computer or cloud instance capable of running Docker can ho
 * **PostgreSQL Database**: stores persistent checkpoints that allow the agent to maintain memory across sessions and users.
 
 * **Backend API**: provides the orchestration and intelligence layer mentioned before, exposing endpoints to interact with the agent.
+
 * **Web UI**: a lightweight client interface that lets end users easily interact with the agent without needing technical expertise.
 
 This ensures consistency across development, staging, and production by providing identical environments. It offers isolation by encapsulating dependencies within containers, eliminating conflicts with local setups. The deployment gains portability, running seamlessly on cloud providers, on-premises infrastructure, or local machines wherever Docker is supported. Finally, it enables scalability, integrating smoothly with container orchestrators like Kubernetes or ECS to handle production workloads efficiently.
-
 
 ### Quick Start
 
