@@ -114,7 +114,6 @@ def main():
             progress_placeholder = st.empty()
             
             full_response = ""
-            progress_logs = []
             
             try:
                 # Make the API call
@@ -126,41 +125,31 @@ def main():
                         continue
                     
                     try:
-                        # Decode the chunk
                         chunk_text = chunk.decode('utf-8').strip()
                         
-                        # Skip empty lines
                         if not chunk_text:
                             continue
                         
-                        # Handle Server-Sent Events format
                         if chunk_text.startswith('data: '):
-                            json_data = chunk_text[6:]  # Remove 'data: ' prefix
+                            json_data = chunk_text[6:]
                         else:
                             json_data = chunk_text
                         
-                        # Parse JSON
                         data = json.loads(json_data)
                         
                         message_type = data.get("type", "")
                         content = data.get("data", "")
                         
                         if message_type == "progress":
-                            # Add to progress logs
-                            progress_logs.append(content)
-                            # Display current progress
-                            progress_text = "\n".join([f"• {log}" for log in progress_logs])
-                            progress_placeholder.info(f"**Processing...**\n\n{progress_text}")
+                            # CHANGE 1: Clear and replace the progress message instead of appending
+                            progress_placeholder.info(f"**Processing...**\n\n• {content}")
                             
                         elif message_type == "content":
-                            # Clear progress and start streaming content
-                            if progress_logs:  # First content chunk
+                            # CHANGE 2: Clear the progress placeholder when content starts to stream
+                            if progress_placeholder:
                                 progress_placeholder.empty()
-                                progress_logs = []
                             
-                            # Accumulate response
                             full_response += content
-                            # Display accumulated response
                             message_placeholder.markdown(full_response + "▌")
                             
                         elif message_type == "error":
@@ -170,16 +159,13 @@ def main():
                             break
                             
                     except json.JSONDecodeError:
-                        # Skip invalid JSON
                         continue
                     except Exception as e:
                         st.error(f"Error processing chunk: {str(e)}")
                         continue
                 
-                # Clean up the final response (remove cursor)
                 if full_response:
                     message_placeholder.markdown(full_response)
-                    # Add to chat history
                     st.session_state.chat_messages.append({
                         "role": "assistant", 
                         "content": full_response
@@ -189,16 +175,13 @@ def main():
                 progress_placeholder.empty()
                 error_msg = f"Connection error: {str(e)}"
                 message_placeholder.error(f"❌ {error_msg}")
-                # Add error to chat history
                 st.session_state.chat_messages.append({
                     "role": "assistant", 
                     "content": error_msg
                 })
-        
-        # Force rerun to show updated messages
+            
         st.rerun()
 
-    # Help information
     with st.expander("ℹ️ Chat Tips", expanded=False):
         st.markdown("""
         - **Live Streaming**: Responses appear in real-time as they're generated
