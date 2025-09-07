@@ -1,187 +1,266 @@
-import http.server
-import socketserver
-import threading
-from urllib.parse import urlparse, parse_qs
-import requests
-import json
-import logging
-import time
 import base64
 import hashlib
 import os
-import socket
+import urllib.parse
+import requests
+import re
+from typing import Dict, Any, Tuple
+import logging
+from dotenv import load_dotenv
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
+load_dotenv()
+
 logger = logging.getLogger(__name__)
 
-# Shared container for the OAuth code
-class OAuthCodeContainer:
-    def __init__(self):
-        self._code = None
-        self._lock = threading.Lock()
+def generate_pkce_pair() -> Tuple[str, str]:
+    """Generate PKCE code verifier and challenge pair"""
+    # Generate a cryptographically secure random string
+    code_verifier = base64.urlsafe_b64encode(os.urandom(32)).rstrip(b'=').decode('ascii')
+    
+    # Create the SHA256 hash of the verifier
+    digest = hashlib.sha256(code_verifier.encode('ascii')).digest()
+    code_challenge = base64.urlsafe_b64encode(digest).rstrip(b'=').decode('ascii')
+    
+    return code_verifier, code_challenge
 
-    def set_code(self, code):
-        with self._lock:
-            self._code = code
-            logger.info(f"Received authorization code: {code[:10]}...")
-
-    def get_code(self):
-        with self._lock:
-            return self._code
-
-    def clear_code(self):
-        with self._lock:
-            self._code = None
-            logger.info("Cleared authorization code.")
-
-oauth_code_container = OAuthCodeContainer()
-
-# Use a specific port for the server
-PORT = 6173
-
-class AuthServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
-    """
-    HTTP server that handles OAuth redirect callbacks.
-    """
-    def __init__(self, server_address, RequestHandlerClass, code_container):
-        self.code_container = code_container
-        self.server_thread = threading.current_thread()
-        super().__init__(server_address, RequestHandlerClass)
-        logger.info(f"Starting OAuth callback server on port {PORT}...")
-
-    def shutdown(self):
-        """Shutdown the server gracefully."""
-        super().shutdown()
-        logger.info("OAuth callback server shutting down.")
-
-class RequestHandler(http.server.BaseHTTPRequestHandler):
-    def do_GET(self):
-        query_params = parse_qs(urlparse(self.path).query)
-        code = query_params.get("code", [None])[0]
-
-        if code:
-            self.server.code_container.set_code(code)
-            self.send_response(200)
-            self.send_header("Content-type", "text/html")
-            self.end_headers()
-            self.wfile.write(b"<html><head><title>Authentication complete</title></head><body><h1>Authentication complete</h1><p>You can close this window.</p></body></html>")
-        else:
-            self.send_response(400)
-            self.send_header("Content-type", "text/html")
-            self.end_headers()
-            self.wfile.write(b"<html><body><h1>Error</h1><p>No authorization code received.</p></body></html>")
-
-def initiate_oauth_flow(username: str, config):
-    """
-    Initiates the Google OAuth 2.0 flow.
-    Starts a local server in a separate thread to listen for the callback.
-    Returns the authorization URL and state.
-    """
-    redirect_uri = f"http://127.0.0.1:{PORT}/callback"
-    scopes = [
-        "https://www.googleapis.com/auth/userinfo.email",
-        "https://www.googleapis.com/auth/userinfo.profile",
-        "https://www.googleapis.com/auth/drive.readonly",
-        "https://www.googleapis.com/auth/calendar.readonly",
-        "https://www.googleapis.com/auth/gmail.readonly"
-    ]
-
-    # Generate PKCE code verifier and challenge
-    code_verifier = base64.urlsafe_b64encode(os.urandom(32)).rstrip(b'=').decode('utf-8')
-    code_challenge = base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode('utf-8')).digest()).rstrip(b'=').decode('utf-8')
-
-    auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id={config.GOOGLE_CLIENT_ID}&redirect_uri={redirect_uri}&scope={' '.join(scopes)}&access_type=offline&prompt=consent&code_challenge={code_challenge}&code_challenge_method=S256"
-
-    logger.info(f"Generated OAuth URL for {username}")
-
-    try:
-        # Check if the port is in use and pick a free one if needed
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            s.bind(("127.0.0.1", PORT))
-        except socket.error as e:
-            logger.warning(f"Port {PORT} is in use. Skipping server start for this flow.")
-        finally:
-            s.close()
-            
-        # Start the local server in a separate thread
-        server = AuthServer(('127.0.0.1', PORT), RequestHandler, oauth_code_container)
-        server_thread = threading.Thread(target=server.serve_forever, daemon=True)
-        server_thread.server = server # Crucial: store the server object on the thread
-        server_thread.start()
-
-        logger.info("OAuth server thread started.")
-
-        return {
-            "auth_url": auth_url,
-            "code_verifier": code_verifier,
-            "redirect_uri": redirect_uri,
-            "server_thread": server_thread # Crucial: return the thread object
-        }
-    except Exception as e:
-        logger.error(f"Failed to start local server: {str(e)}")
-        raise RuntimeError("Failed to start local server for OAuth callback.")
-
-def process_oauth_callback(code: str, redirect_uri: str, code_verifier: str, username: str, account_info: str, api_client, config):
-    """
-    Exchanges the authorization code for an access and refresh token.
-    Associates the account with the user via the backend API.
-    """
-    token_params = {
+def generate_oauth_url(config, redirect_uri: str, code_challenge: str) -> Dict[str, str]:
+    """Generate OAuth authorization URL with PKCE"""
+    params = {
         "client_id": config.GOOGLE_CLIENT_ID,
-        "client_secret": config.GOOGLE_CLIENT_SECRET,
-        "code": code,
         "redirect_uri": redirect_uri,
-        "grant_type": "authorization_code",
-        "code_verifier": code_verifier
+        "response_type": "code",
+        "scope": " ".join(config.GOOGLE_SCOPES),
+        "code_challenge": code_challenge,
+        "code_challenge_method": "S256",
+        "access_type": "offline",
+        "prompt": "consent"
     }
+    auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?{urllib.parse.urlencode(params)}"
+    return {"auth_url": auth_url, "redirect_uri": redirect_uri}
 
+def validate_oauth_code(code: str) -> bool:
+    """
+    Validate the format of an OAuth authorization code
+    Google authorization codes typically follow a specific pattern
+    """
+    if not code or not isinstance(code, str):
+        return False
+    
+    # Remove any whitespace
+    code = code.strip()
+    
+    # Basic validation - Google auth codes are typically:
+    # - Start with "4/"
+    # - Follow with alphanumeric characters, hyphens, and underscores
+    # - Are usually 50-200 characters long
+    pattern = r'^4/[A-Za-z0-9_-]{40,}$'
+    
+    if not re.match(pattern, code):
+        return False
+    
+    # Additional length check
+    if len(code) < 45 or len(code) > 250:
+        return False
+    
+    return True
+
+def exchange_code_for_tokens(code: str, redirect_uri: str, code_verifier: str, config) -> Dict[str, Any]:
+    """
+    Exchange authorization code for access and refresh tokens
+    Replicates the token exchange logic from consent_flow.py
+    """
     try:
-        # Step 1: Exchange auth code for tokens
-        token_resp = requests.post(config.GOOGLE_TOKEN_URL, data=token_params)
-        token_resp.raise_for_status()
-        tokens = token_resp.json()
-
-        if "refresh_token" not in tokens:
-            return {"success": False, "error": "No refresh token received. Check that 'access_type=offline' and 'prompt=consent' were used and that you are not re-authenticating with the same token."}
-
-        refresh_token = tokens["refresh_token"]
-
-        # Step 2: Get user's email to associate with the account
-        profile_resp = requests.get("https://www.googleapis.com/oauth2/v1/userinfo",
-                                    headers={"Authorization": f"Bearer {tokens['access_token']}"})
-        profile_resp.raise_for_status()
-        user_info = profile_resp.json()
-        account_email = user_info["email"]
-
-        # Step 3: Call backend API to associate the account
-        api_result = api_client.associate_account(
-            username=username,
-            refresh_token=refresh_token,
-            account_info=f"{account_info} ({account_email})"
+        # Prepare token exchange request
+        token_data = {
+            "code": code,
+            "client_id": config.GOOGLE_CLIENT_ID,
+            "client_secret": config.GOOGLE_CLIENT_SECRET,
+            "redirect_uri": redirect_uri,
+            "grant_type": "authorization_code",
+            "code_verifier": code_verifier,
+        }
+        
+        logger.info("Exchanging authorization code for tokens...")
+        
+        # Make the token exchange request
+        response = requests.post(
+            config.GOOGLE_TOKEN_URL,
+            data=token_data,
+            timeout=30
         )
-
-        if api_result and not api_result.get("error"):
-            # Add fetched email and label to the result
-            api_result["account_details"] = {
-                "account_email": account_email,
-                "account_info": f"{account_info} ({account_email})",
-                "details": "Associated"
-            }
-            api_result["email"] = account_email
-            api_result["success"] = True
-            return api_result
-        else:
-            return {"success": False, "error": api_result.get("error", "API association failed.")}
-
+        
+        if response.status_code != 200:
+            logger.error(f"Token exchange failed: {response.status_code} - {response.text}")
+            raise Exception(f"Failed to exchange code for tokens: {response.text}")
+        
+        tokens = response.json()
+        
+        # Validate that we received the required tokens
+        if "access_token" not in tokens:
+            raise Exception("No access token received from Google")
+        
+        if "refresh_token" not in tokens:
+            logger.warning("No refresh token received - this may indicate the user has already authorized this app")
+            raise Exception("No refresh token received. Please revoke this app's permissions in your Google Account settings and try again.")
+        
+        logger.info("Successfully exchanged code for tokens")
+        return tokens
+        
     except requests.exceptions.RequestException as e:
-        return {"success": False, "error": f"Token exchange failed: {str(e)}"}
+        logger.error(f"Network error during token exchange: {str(e)}")
+        raise Exception(f"Network error during token exchange: {str(e)}")
     except Exception as e:
-        return {"success": False, "error": f"An unexpected error occurred during association: {str(e)}"}
+        logger.error(f"Token exchange failed: {str(e)}")
+        raise
 
-def get_oauth_code():
-    return oauth_code_container.get_code()
+def get_user_email_from_token(access_token: str) -> str:
+    """
+    Get user's email address using the access token
+    Replicates the email fetching logic from consent_flow.py
+    """
+    try:
+        logger.info("Fetching user email from access token...")
+        
+        # Use the OpenID Connect userinfo endpoint
+        response = requests.get(
+            "https://openidconnect.googleapis.com/v1/userinfo",
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=30
+        )
+        
+        if response.status_code != 200:
+            logger.error(f"Failed to get user info: {response.status_code} - {response.text}")
+            raise Exception(f"Failed to get user information: {response.text}")
+        
+        user_info = response.json()
+        
+        if "email" not in user_info:
+            raise Exception("No email found in user information")
+        
+        email = user_info["email"]
+        logger.info(f"Successfully fetched user email: {email}")
+        return email
+        
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Network error while fetching user email: {str(e)}")
+        raise Exception(f"Network error while fetching user email: {str(e)}")
+    except Exception as e:
+        logger.error(f"Failed to get user email: {str(e)}")
+        raise
 
-def clear_oauth_code():
-    oauth_code_container.clear_code()
+def validate_tokens(tokens: Dict[str, Any]) -> bool:
+    """
+    Validate that the token response contains required fields
+    """
+    required_fields = ["access_token", "token_type"]
+    
+    for field in required_fields:
+        if field not in tokens:
+            logger.error(f"Missing required field in token response: {field}")
+            return False
+    
+    # Check token type
+    if tokens.get("token_type", "").lower() != "bearer":
+        logger.warning(f"Unexpected token type: {tokens.get('token_type')}")
+    
+    return True
+
+def refresh_access_token(refresh_token: str, config) -> Dict[str, Any]:
+    """
+    Refresh an access token using a refresh token
+    This can be used for token renewal in the future
+    """
+    try:
+        logger.info("Refreshing access token...")
+        
+        refresh_data = {
+            "client_id": config.GOOGLE_CLIENT_ID,
+            "client_secret": config.GOOGLE_CLIENT_SECRET,
+            "refresh_token": refresh_token,
+            "grant_type": "refresh_token",
+        }
+        
+        response = requests.post(
+            config.GOOGLE_TOKEN_URL,
+            data=refresh_data,
+            timeout=30
+        )
+        
+        if response.status_code != 200:
+            logger.error(f"Token refresh failed: {response.status_code} - {response.text}")
+            raise Exception(f"Failed to refresh token: {response.text}")
+        
+        tokens = response.json()
+        
+        if not validate_tokens(tokens):
+            raise Exception("Invalid token response received")
+        
+        logger.info("Successfully refreshed access token")
+        return tokens
+        
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Network error during token refresh: {str(e)}")
+        raise Exception(f"Network error during token refresh: {str(e)}")
+    except Exception as e:
+        logger.error(f"Token refresh failed: {str(e)}")
+        raise
+
+def test_token_validity(access_token: str) -> bool:
+    """
+    Test if an access token is still valid by making a simple API call
+    """
+    try:
+        response = requests.get(
+            "https://www.googleapis.com/oauth2/v1/tokeninfo",
+            params={"access_token": access_token},
+            timeout=10
+        )
+        
+        return response.status_code == 200
+        
+    except Exception as e:
+        logger.warning(f"Token validity test failed: {str(e)}")
+        return False
+
+def extract_code_from_url(url: str) -> str:
+    """
+    Extract authorization code from a Google OAuth callback URL
+    Useful if users paste the full callback URL instead of just the code
+    """
+    try:
+        parsed_url = urllib.parse.urlparse(url)
+        query_params = urllib.parse.parse_qs(parsed_url.query)
+        
+        if "code" in query_params:
+            code = query_params["code"][0]
+            return code
+        
+        return ""
+        
+    except Exception as e:
+        logger.warning(f"Failed to extract code from URL: {str(e)}")
+        return ""
+
+def format_scopes_for_display(scopes: list) -> str:
+    """
+    Format OAuth scopes in a human-readable way for display
+    """
+    scope_descriptions = {
+        "openid": "Basic profile identification",
+        "email": "Email address",
+        "profile": "Basic profile information",
+        "https://www.googleapis.com/auth/userinfo.email": "Email address",
+        "https://www.googleapis.com/auth/userinfo.profile": "Profile information",
+        "https://www.googleapis.com/auth/drive.readonly": "Read Google Drive files",
+        "https://www.googleapis.com/auth/calendar": "Manage Google Calendar",
+        "https://www.googleapis.com/auth/gmail.readonly": "Read Gmail messages",
+        "https://www.googleapis.com/auth/contacts.readonly": "Read contacts",
+        "https://www.googleapis.com/auth/contacts.other.readonly": "Read other contacts",
+    }
+    
+    descriptions = []
+    for scope in scopes:
+        desc = scope_descriptions.get(scope, scope)
+        descriptions.append(f"• {desc}")
+    
+    return "\n".join(descriptions)
