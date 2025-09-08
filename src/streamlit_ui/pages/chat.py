@@ -20,9 +20,11 @@ def main():
     col1, col2 = st.columns([1, 1])
     with col1:
         if st.button("← Back to Main"):
+            logger.info("Switching to main page")
             st.switch_page("main.py")
     with col2:
         if st.button("Logout", type="secondary"):
+            logger.info("Switching to main page")
             # Clear all session state related to authentication
             for key in list(st.session_state.keys()):
                 if key in st.session_state:
@@ -38,6 +40,7 @@ def main():
     if not accounts:
         st.warning("Associate a Google account to chat.")
         if st.button("Go to Account Management"):
+            logger.info("Switching to main page")
             st.switch_page("main.py")
         return
 
@@ -55,8 +58,12 @@ def main():
         st.error(
             "No active Google accounts available. Please re-authenticate your accounts."
         )
+        logger.info(
+            "No active Google accounts available. Please re-authenticate your accounts."
+        )
         if st.button("Go to Account Management"):
             st.switch_page("main.py")
+        logger.info("Switching to main page")
         return
 
     # # Account selection dropdown with better formatting
@@ -326,6 +333,7 @@ def main():
     user_input = st.chat_input("Type your message here...")
 
     if user_input:
+        logger.info("User input received", extra={"user_input": user_input})
         # Add user message to session immediately for this conversation
         if conversation_id not in st.session_state.chat_messages:
             st.session_state.chat_messages[conversation_id] = []
@@ -346,10 +354,11 @@ def main():
             full_response = ""
 
             try:
-                # Make the API call with selected account context
+                logger.info("Making API call to process user input")
                 response = client.start_chat_stream(
                     username, conversation_id, user_input
                 )
+                logger.info("Response received", extra={"response": response})
 
                 # Process the streaming response
                 for chunk in response:

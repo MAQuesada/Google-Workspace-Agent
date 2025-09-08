@@ -44,8 +44,12 @@ COPY . .
 
 RUN chmod +x entrypoint.sh
 
-# Create non-root user
-RUN useradd -m appuser && chown -R appuser:appuser /app $VIRTUAL_ENV $GUARDRAILS_HOME
+# create non-root user with stable uid (1000) and prepare the folder
+RUN useradd -m -u 1000 appuser \
+ && mkdir -p /home/appuser/.streamlit \
+ && chown -R appuser:appuser /home/appuser /app $VIRTUAL_ENV $GUARDRAILS_HOME
+ENV HOME=/home/appuser
+
 USER appuser
 
 EXPOSE 8000
