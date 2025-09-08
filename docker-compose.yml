@@ -10,7 +10,7 @@ services:
     volumes:
       - ./local/postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d checkpoint_lgraph"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d checkpoint_lgraph" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -35,4 +35,25 @@ services:
       - ./local/sqlite_data:/data
     ports:
       - "8000:8000"
-    command: []  # the entrypoint is defined in the Dockerfile
+    command: [] # the entrypoint is defined in the Dockerfile
+
+  ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        GUARDRAILS_API_KEY: ${GUARDRAILS_API_KEY}
+    container_name: ui-agent
+    restart: unless-stopped
+    depends_on:
+      api-agent:
+        condition: service_started
+    env_file: .env
+    environment:
+      API_BASE_URL: http://api-agent:8000
+      STREAMLIT_SERVER_HEADLESS: "true"
+      STREAMLIT_SERVER_PORT: "8501"
+      STREAMLIT_BROWSER_GATHERUSAGESTATS: "false"
+    ports:
+      - "8501:8501"
+    entrypoint: [ "streamlit", "run", "src/streamlit_ui/main.py", "--server.headless=true", "--server.port=8501", "--server.address=0.0.0.0" ]
