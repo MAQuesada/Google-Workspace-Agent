@@ -168,11 +168,11 @@ def show_error(message: str, technical_details: Optional[str] = None):
 
 def render_login_form():
     st.subheader("Login")
-    api_key_input = st.text_input(
-        "API Key", type="password", value=st.session_state.api_key
-    )
     username_input = st.text_input(
         "Username", value=st.session_state.username if st.session_state.username else ""
+    )
+    api_key_input = st.text_input(
+        "API Key", type="password", value=st.session_state.api_key
     )
     if st.button("Login", type="primary"):
         if not api_key_input or not username_input.strip():
@@ -251,14 +251,15 @@ class AuthCodeHandler(BaseHTTPRequestHandler):
             self.wfile.write(
                 b"<html><body><h1>Authentication complete</h1><p>You can close this window and return to the app.</p></body></html>"
             )
-            if self.on_code_received and self.state_lock and self.code_received_event:
-                with self.state_lock:
-                    st.session_state.auth_code = code
-                    logger.info(
-                        "Received OAuth code",
-                        extra={"code": code[:10]},
-                    )
-                    self.code_received_event.set()
+            # NEVER use st.session_state here(Streamlit does not support read/write from different threads)
+            self.server.shared_state["code"] = code
+            logger.info(
+                "OAuth code extracted from HTTP request", extra={"code": code[:10]}
+            )
+            if AuthCodeHandler.on_code_received:
+                AuthCodeHandler.on_code_received(code)
+            if self.code_received_event:
+                self.code_received_event.set()
         else:
             self.wfile.write(
                 b"<html><body><h1>Authentication failed</h1><p>An error occurred. Please close this window and try again.</p></body></html>"
@@ -267,10 +268,13 @@ class AuthCodeHandler(BaseHTTPRequestHandler):
 
 
 def start_local_server(port: int, on_code_received, state_lock, code_received_event):
-    AuthCodeHandler.on_code_received = on_code_received
+    AuthCodeHandler.on_code_received = (
+        staticmethod(on_code_received) if on_code_received else None  # type: ignore
+    )
     AuthCodeHandler.state_lock = state_lock
     AuthCodeHandler.code_received_event = code_received_event
     server = HTTPServer(("127.0.0.1", port), AuthCodeHandler)
+    server.shared_state = {"code": None}  # type: ignore
 
     def run():
         server.handle_request()
@@ -307,11 +311,33 @@ def render_oauth_flow():
             st.rerun()
 
         # Check for received code
-        if st.session_state.code_received_event.is_set() or st.session_state.auth_code:
+        logger.info(
+            "Checking for received OAuth code",
+            extra={
+                "username": st.session_state.username,
+                "code_received_event": st.session_state.code_received_event.is_set(),
+                "auth_code": st.session_state.auth_code,
+            },
+        )
+        if (
+            st.session_state.code_received_event.is_set()
+            and not st.session_state.auth_code
+        ):
+            server = st.session_state.oauth_server
+            code = getattr(server, "shared_state", {}).get("code")
+            if code:
+                st.session_state.auth_code = code
+                server.shared_state["code"] = None
+                logger.info(
+                    "Main thread stored auth_code from HTTP handler",
+                    extra={"code": code[:10]},
+                )
+
+        if st.session_state.auth_code:
             code_to_process = st.session_state.auth_code
-            if code_to_process:
-                process_oauth_code(code_to_process, st.session_state.account_label)
-                return
+            logger.info("Processing OAuth code", extra={"code": code_to_process[:10]})
+            process_oauth_code(code_to_process, st.session_state.account_label)
+            return
 
         # Check for timeout
         if (
@@ -327,15 +353,27 @@ def render_oauth_flow():
             st.rerun()
 
     elif st.session_state.oauth_state == "processing":
+        logger.info(
+            "Authentication processing",
+            extra={"username": st.session_state.username},
+        )
         st.info("Processing authentication...")
         st.spinner("Exchanging code for tokens and associating account...")
     elif st.session_state.oauth_state == "completed":
+        logger.info(
+            "Authentication completed successfully",
+            extra={"username": st.session_state.username},
+        )
         st.success("Authentication completed successfully!")
         if st.button("Continue", type="primary"):
             reset_oauth_state()
             refresh_user_data()
             st.rerun()
     elif st.session_state.oauth_state == "failed":
+        logger.error(
+            "Authentication failed",
+            extra={"username": st.session_state.username},
+        )
         st.error("Authentication failed. Please try again.")
         col1, col2 = st.columns(2)
         with col1:
@@ -349,10 +387,15 @@ def render_oauth_flow():
 
 
 def process_oauth_code(code: str, account_label: str):
+    logger.info(
+        "Processing OAuth code",
+        extra={"username": st.session_state.username, "code": code[:10]},
+    )
     st.session_state.oauth_state = "processing"
-    st.rerun()
+    # st.rerun()
     try:
         if not validate_oauth_code(code):
+            logger.error("Invalid authorization code format")
             raise ValueError("Invalid authorization code format")
         with st.spinner("Exchanging authorization code for tokens..."):
             tokens = exchange_code_for_tokens(
@@ -361,7 +404,9 @@ def process_oauth_code(code: str, account_label: str):
                 code_verifier=st.session_state.oauth_code_verifier,
                 config=st.session_state.config,
             )
+            logger.info("Tokens exchanged successfully")
         if not tokens.get("refresh_token"):
+            logger.error("No refresh token received")
             raise ValueError(
                 "No refresh token received. The account may have been previously authorized. Try revoking access in your Google Account settings and try again."
             )
@@ -435,13 +480,10 @@ def start_oauth_flow(flow_type: str):
             code_received_event = st.session_state.code_received_event
 
             def on_code_received(code):
-                with state_lock:
-                    st.session_state.auth_code = code
-                    logger.info(
-                        "Received OAuth code",
-                        extra={"code": code[:10]},
-                    )
-                    code_received_event.set()
+                logger.info(
+                    "Received OAuth code from Thread.",
+                    extra={"code": code[:10]},
+                )
 
             server, thread = start_local_server(
                 port, on_code_received, state_lock, code_received_event
@@ -477,6 +519,10 @@ def reset_oauth_state():
         st.session_state.start_oauth_time = None
         st.session_state.oauth_server = None
         st.session_state.code_received_event.clear()
+        if st.session_state.oauth_server and hasattr(
+            st.session_state.oauth_server, "shared_state"
+        ):
+            st.session_state.oauth_server.shared_state["code"] = None
 
 
 def render_account_management():
@@ -557,28 +603,14 @@ def render_account_management():
         # Account selection and chat button
         if working_accounts:
             account_emails = [acc.get("account_email") for acc in working_accounts]
-            account_options = [
-                f"{acc.get('account_email')} ({acc.get('account_info').split(' (')[0] if '(' in acc.get('account_info', '') else acc.get('account_info')})"
-                for acc in working_accounts
-            ]
+            active_email = st.session_state.get("selected_account_email")
+            if active_email not in account_emails:
+                active_email = account_emails[0]
+            st.session_state.selected_account_email = active_email
 
-            col1, col2, col3 = st.columns(3)
+            col1, col2 = st.columns([1, 1])
+
             with col1:
-                # Account selection dropdown
-                selected_idx = st.selectbox(
-                    "Select active account for chat:",
-                    range(len(account_options)),
-                    format_func=lambda x: account_options[x],
-                    index=0,
-                    key="account_select",
-                )
-                st.session_state.selected_account_email = account_emails[selected_idx]
-
-                # Chat button
-                if st.button("💬 Go to Chat", type="primary"):
-                    st.switch_page("pages/chat.py")
-
-            with col2:
                 with st.form(key="add_account_form"):
                     account_label = st.text_input(
                         "Account Label:",
@@ -595,10 +627,23 @@ def render_account_management():
                         except ValueError as e:
                             st.error(str(e))
 
-            with col3:
-                if st.button("🔄 Refresh Status", help="Check account status"):
-                    refresh_user_data()
-                    st.rerun()
+            with col2:
+                with st.form("actions_form"):
+                    refresh = st.form_submit_button(
+                        "🔄 Refresh Status",
+                        help="Check account status",
+                        use_container_width=True,
+                    )
+
+                    go_chat = st.form_submit_button(
+                        "💬 Go to Chat", type="primary", use_container_width=True
+                    )
+
+                    if refresh:
+                        refresh_user_data()
+                        st.rerun()
+                    if go_chat:
+                        st.switch_page("pages/chat.py")
 
             st.info(f"✅ {len(working_accounts)} account(s) ready for chat.")
         else:
@@ -706,11 +751,10 @@ def main():
                 st.success("Logged out successfully!")
                 logger.info("User logged out")
                 time.sleep(1)
-                st.rerun()
             except Exception as e:
                 st.error(f"Logout error: {str(e)}")
                 initialize_session_state()
-                st.rerun()
+            st.rerun()
     if st.session_state.oauth_state != "idle":
         render_oauth_flow()
         return
