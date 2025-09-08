@@ -43,6 +43,7 @@ class Config(BaseSettings):
     LOG_FILE_PATH: str = ""
     SECRET_KEY: str
     GUARDRAILS_API_KEY: str
+    API_BASE_URL: str = "http://localhost:8000"
 
     class Config:
         env_file = ".env"

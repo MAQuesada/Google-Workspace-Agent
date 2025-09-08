@@ -26,6 +26,7 @@ User Request → Orchestrator → Specialized Managers → Google Workspace APIs
 | **Authentication**  | Google Auth                 | OAuth & credential management        |
 | **Unit-test**       | Pytest                      | Evaluate and test the system components |
 | **API**             | FastAPI                     | Expose the agent to the user         |
+| **UI**              | Streamlit                   | Create a a lightweight user interface |
 | **Environment**     | Poetry                      | Dependency & virtual env setup       |
 
 ***
@@ -398,6 +399,7 @@ You can run the agent and its dependencies with **Docker**. This setup will star
 
 * A container running the **FastAPI API**
 * A container running **PostgreSQL** for persistent agent state
+* A container running the **Streamlit** APP for the UI
 
 ### 1) Prepare your `.env` file
 
@@ -427,5 +429,23 @@ http://localhost:8000
 ```
 
 Make sure to include your `X-API-Key` header (see [API Authentication](#-authentication)) when sending requests.
+
+## Streamlit-enabled UI
+
+### 1) Login using API key and username
+
+Enter the provided API key and the username to access the API backend via the UI
+
+### 2) Associate Google cloud email
+
+Click on associate google email button to associate the email stored as credential on the google cloud console. Make sure to include the google credentials in the .env file to efficiently link the email with the username.
+
+### 3) Chat with the agent
+
+Click on Chat button to begin chatting and assigning tasks related to Google Workspace in the form of natural language. User can also access chat history.
+
+### 4) Dissociate Google cloud email
+
+To dissociate an email from the username, click on dissociate email account.
 
 ***
