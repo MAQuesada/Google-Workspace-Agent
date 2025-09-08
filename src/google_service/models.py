@@ -5,7 +5,8 @@ from uuid import uuid4
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from pydantic import BaseModel, Field
-from google.auth.exceptions import RefreshError
+from google.auth.exceptions import RefreshError, TransportError
+from requests import HTTPError
 
 from utils.exceptions import CredentialsRefreshError
 
@@ -44,6 +45,8 @@ class GoogleAccountCredentials(BaseModel):
         creds = self.google_credentials
         try:
             creds.refresh(Request())
+        except TransportError as e:
+            raise HTTPError(f"HTTP Error when refresh the token: {e}") from e
         except RefreshError as e:
             raise CredentialsRefreshError(
                 f"Inform to the user that the Token has been expired or revoked: {e}"

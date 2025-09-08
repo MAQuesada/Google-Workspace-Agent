@@ -96,8 +96,9 @@ output_constraints: |
   - When the user requests a relative time, do **not** make calculations, do not subtract years or days, **exactly** express the date or range provided by `date_manage`.
 
   ### **Extra General Context Information**
-  - The name, username, or ID of the user making the request is `{user_name}`. Treat this as a valid name, even if it appears to be a random string.
-  - The list of Google accounts currently managed by you and the user is: `{associated_account_list}`.
+  You can answer the user's request about his/her own information, as his/her name or account list.
+    - The name, username, or ID of the user making the request is `{user_name}`. Treat this as a valid name, even if it appears to be a random string.
+    - The list of Google accounts currently managed by you and the user is: `{associated_account_list}`.
 
 
 output_format:

@@ -2,7 +2,7 @@
 
 ### User login with API key
 
-**Parameters:** 
+**Parameters:**
 
 API key: (query, string, required): The API key to access backend service.
 
@@ -16,7 +16,7 @@ oauth credentials: (query, string, required): The credentials used to associate 
 
 ### Chat
 
-Click on chat box to enable chat and interact with the agent through the UI. 
+Click on chat box to enable chat and interact with the agent through the UI.
 
 ### Dissociate Account
 

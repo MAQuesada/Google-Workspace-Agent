@@ -13,6 +13,7 @@ packages = [
     { include = "google_service", from = "src" },
     { include = "utils", from = "src" },
     { include = "api", from = "src" },
+    { include = "streamlit_ui", from = "src" },
 ]
 
 [tool.poetry.dependencies]
@@ -44,12 +45,12 @@ python-jose = "^3.5.0"
 uvicorn = "^0.35.0"
 fastapi = "^0.116.1"
 beautifulsoup4 = "^4.13.5"
-#guardrails-ai = "^0.6.6"
 backoff = "^2.2.1"
 apscheduler = "^3.11.0"
 cryptography = "^45.0.7"
 litellm = "^1.76.1"
 streamlit = "^1.49.1"
+guardrails-ai = "^0.6.6"
 
 
 [build-system]
