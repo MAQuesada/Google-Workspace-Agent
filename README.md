@@ -26,6 +26,7 @@ User Request → Orchestrator → Specialized Managers → Google Workspace APIs
 | **Authentication**  | Google Auth       | OAuth & credential management           |
 | **Unit-test**       | Pytest            | Evaluate and test the system components |
 | **API**             | FastAPI           | Expose the agent to the user            |
+| **UI**              | Streamlit         | Create a a lightweight user interface   |
 | **Environment**     | Poetry            | Dependency & virtual env setup          |
 
 ---
@@ -398,6 +399,7 @@ You can run the agent and its dependencies with **Docker**. This setup will star
 
 * A container running the **FastAPI API**
 * A container running **PostgreSQL** for persistent agent state
+* A container running the **Streamlit** APP for the UI
 
 ### 1) Prepare your `.env` file
 
@@ -445,6 +447,3 @@ Click on Chat button to begin chatting and assigning tasks related to Google Wor
 ### 4) Dissociate Google cloud email
 
 To dissociate an email from the username, click on dissociate email account.
-
-
----

@@ -27,9 +27,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN python -m venv $VIRTUAL_ENV && \
     $VIRTUAL_ENV/bin/pip install --upgrade pip
 
-# Python dependencies
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Guardrails configuration and hub installation
 RUN mkdir -p "$GUARDRAILS_HOME" && \
@@ -40,13 +40,16 @@ RUN mkdir -p "$GUARDRAILS_HOME" && \
     guardrails hub install hub://guardrails/llamaguard_7b && \
     guardrails hub install hub://guardrails/unusual_prompt
 
-# Copy source
 COPY . .
 
 RUN chmod +x entrypoint.sh
 
-# Create non-root user
-RUN useradd -m appuser && chown -R appuser:appuser /app $VIRTUAL_ENV $GUARDRAILS_HOME
+# create non-root user with stable uid (1000) and prepare the folder
+RUN useradd -m -u 1000 appuser \
+ && mkdir -p /home/appuser/.streamlit \
+ && chown -R appuser:appuser /home/appuser /app $VIRTUAL_ENV $GUARDRAILS_HOME
+ENV HOME=/home/appuser
+
 USER appuser
 
 EXPOSE 8000
